@@ -1,0 +1,702 @@
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #1e1e1e;
+    overflow: hidden;
+}
+
+.tab-bar {
+    display: flex;
+    align-items: center;
+    background-color: #2d2d30;
+    border-bottom: 1px solid #464647;
+    min-height: 35px;
+    overflow-x: auto;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    height: 35px;
+    background-color: #2d2d30;
+    border-right: 1px solid #464647;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 120px;
+    max-width: 200px;
+    position: relative;
+}
+
+.tab:hover {
+    background-color: #323233;
+}
+
+.tab.active {
+    background-color: #1e1e1e;
+    border-bottom: 1px solid #1e1e1e;
+}
+
+.tab-label {
+    flex: 1;
+    font-size: 13px;
+    color: #cccccc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+}
+
+.tab.active .tab-label {
+    color: #ffffff;
+}
+
+.tab-close {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #858585;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-close:hover {
+    background-color: #464647;
+    color: #cccccc;
+}
+
+.tab-add {
+    width: 28px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #858585;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tab-add:hover {
+    background-color: #323233;
+    color: #cccccc;
+}
+
+/* 确保编辑器区域正确显示 */
+.editor-terminal-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.editor-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: #1e1e1e;
+}
+
+.editor-pane {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+}
+
+.editor-pane.active {
+    display: block;
+}
+
+/* Monaco Editor 容器样式 */
+.monaco-editor-container {
+    width: 100% !important;
+    height: 100% !important;
+    background-color: #1e1e1e;
+}
+
+body.theme-light .monaco-editor-container,
+body[data-theme="light"] .monaco-editor-container,
+body[data-editor-theme="light"] .monaco-editor-container {
+    background-color: #ffffff;
+}
+
+/* 编辑器包装器 */
+.editor-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.line-numbers {
+    background-color: #1e1e1e;
+    border-right: 1px solid #464647;
+    padding: 8px 8px 8px 12px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 21px;
+    color: #858585;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    min-width: 50px;
+    text-align: right;
+    box-sizing: border-box;
+}
+
+.line-number {
+    height: 21px;
+    line-height: 21px;
+    cursor: pointer;
+    padding-right: 16px;
+    position: relative;
+    transition: color 0.2s;
+    box-sizing: border-box;
+    display: block;
+}
+
+.line-number:hover {
+    color: #cccccc;
+}
+
+.line-number.breakpoint {
+    color: #ffffff;
+}
+
+.line-number.breakpoint::before {
+    content: '●';
+    position: absolute;
+    left: -8px;
+    top: 0;
+    color: #e51400;
+    font-size: 12px;
+}
+
+.line-number.breakpoint:hover::before {
+    color: #ff4444;
+}
+
+.code-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+}
+
+.code-editor {
+    width: 100%;
+    height: 100%;
+    background-color: #1e1e1e;
+    border: none;
+    outline: none;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 21px;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    resize: none;
+    overflow-x: auto;
+    overflow-y: auto;
+    white-space: pre;
+    tab-size: 4;
+}
+
+.code-editor::placeholder {
+    color: #6a6a6a;
+}
+
+.code-editor:focus {
+    outline: none;
+}
+
+/* 代码高亮样式 */
+.code-highlight {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 8px 12px;
+    white-space: pre;
+    overflow: hidden;
+    tab-size: 4;
+}
+
+/* 语法高亮颜色 */
+.keyword {
+    color: #569cd6;
+}
+
+.string {
+    color: #ce9178;
+}
+
+.comment {
+    color: #6a9955;
+}
+
+.number {
+    color: #b5cea8;
+}
+
+.function {
+    color: #dcdcaa;
+}
+
+.type {
+    color: #4ec9b0;
+}
+
+.operator {
+    color: #d4d4d4;
+}
+
+.bracket {
+    color: #ffd700;
+}
+
+/* 当前行高亮 */
+.current-line {
+    background-color: #2a2a2a;
+    position: relative;
+}
+
+.current-line::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+}
+
+/* 搜索高亮 */
+.search-match {
+    background-color: #613a00;
+    border: 1px solid #f99b00;
+}
+
+.search-current {
+    background-color: #f99b00;
+    color: #000000;
+}
+
+/* 错误和警告高亮 */
+.error-highlight {
+    border-bottom: 2px wavy #e51400;
+}
+
+.warning-highlight {
+    border-bottom: 2px wavy #ffcc00;
+}
+
+/* 选择文本 */
+.code-editor::selection {
+    background: #264f78;
+    color: #ffffff; /* 白色文字确保在深蓝背景上可见 */
+}
+
+/* 通用选中文字样式 - 确保在所有编辑器环境中都有良好的对比度 */
+.editor-instance ::selection,
+.code-editor ::selection,
+.monaco-editor ::selection {
+    background: #264f78;
+    color: #ffffff;
+}
+
+/* 浅色主题的通用选中文字样式 */
+body.theme-light .editor-instance ::selection,
+body.theme-light .code-editor ::selection,
+body.theme-light .monaco-editor ::selection,
+body[data-theme="light"] .editor-instance ::selection,
+body[data-theme="light"] .code-editor ::selection,
+body[data-theme="light"] .monaco-editor ::selection,
+body[data-editor-theme="light"] .editor-instance ::selection,
+body[data-editor-theme="light"] .code-editor ::selection,
+body[data-editor-theme="light"] .monaco-editor ::selection {
+    background: #add6ff;
+    color: #000000;
+}
+
+/* 浅色主题的当前行高亮 */
+body.theme-light .current-line,
+body[data-theme="light"] .current-line,
+body[data-editor-theme="light"] .current-line {
+    background-color: #f0f0f0;
+}
+
+body.theme-light .current-line::before,
+body[data-theme="light"] .current-line::before,
+body[data-editor-theme="light"] .current-line::before {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* 浅色主题的搜索高亮 */
+body.theme-light .search-match,
+body[data-theme="light"] .search-match,
+body[data-editor-theme="light"] .search-match {
+    background-color: #ffffe0;
+    border-color: #ff9900;
+}
+
+body.theme-light .search-current,
+body[data-theme="light"] .search-current,
+body[data-editor-theme="light"] .search-current {
+    background-color: #ff9900;
+    color: #ffffff;
+}
+
+/* 浅色主题的语法高亮 */
+body.theme-light .keyword,
+body[data-theme="light"] .keyword,
+body[data-editor-theme="light"] .keyword {
+    color: #0000ff;
+}
+
+body.theme-light .string,
+body[data-theme="light"] .string,
+body[data-editor-theme="light"] .string {
+    color: #a31515;
+}
+
+body.theme-light .comment,
+body[data-theme="light"] .comment,
+body[data-editor-theme="light"] .comment {
+    color: #008000;
+}
+
+body.theme-light .number,
+body[data-theme="light"] .number,
+body[data-editor-theme="light"] .number {
+    color: #098658;
+}
+
+body.theme-light .function,
+body[data-theme="light"] .function,
+body[data-editor-theme="light"] .function {
+    color: #795e26;
+}
+
+body.theme-light .type,
+body[data-theme="light"] .type,
+body[data-editor-theme="light"] .type {
+    color: #267f99;
+}
+
+body.theme-light .operator,
+body[data-theme="light"] .operator,
+body[data-editor-theme="light"] .operator {
+    color: #000000;
+}
+
+body.theme-light .bracket,
+body[data-theme="light"] .bracket,
+body[data-editor-theme="light"] .bracket {
+    color: #0431fa;
+}
+
+/* 浅色主题的选择文本 */
+body.theme-light .code-editor::selection,
+body[data-theme="light"] .code-editor::selection,
+body[data-editor-theme="light"] .code-editor::selection {
+    background: #add6ff;
+    color: #000000; /* 黑色文字确保在浅蓝背景上可见 */
+}
+
+/* 响应式设计 */
+@media (max-width: 800px) {
+    .code-editor {
+        font-size: 12px;
+    }
+    
+    .line-numbers {
+        font-size: 12px;
+        padding: 8px 6px 8px 8px;
+    }
+    
+    .tab {
+        min-width: 100px;
+        padding: 0 8px;
+    }
+}
+
+/* 欢迎页面样式 */
+.welcome-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #1e1e1e;
+    color: #cccccc;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.welcome-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.welcome-logo {
+    color: #0e639c;
+    margin-bottom: 20px;
+}
+
+.welcome-title {
+    font-size: 32px;
+    font-weight: 300;
+    margin: 0 0 8px 0;
+    color: #ffffff;
+}
+
+.welcome-subtitle {
+    font-size: 16px;
+    margin: 0;
+    opacity: 0.8;
+}
+
+.welcome-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    flex: 1;
+}
+
+.welcome-section {
+    background-color: #252526;
+    padding: 24px;
+    border-radius: 8px;
+    border: 1px solid #383838;
+}
+
+.welcome-section h2 {
+    font-size: 18px;
+    margin: 0 0 16px 0;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.welcome-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.welcome-button {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: transparent;
+    border: 1px solid #464647;
+    border-radius: 4px;
+    color: #cccccc;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.welcome-button:hover {
+    background-color: #2a2d2e;
+    border-color: #0e639c;
+}
+
+.button-icon {
+    margin-right: 12px;
+    font-size: 16px;
+}
+
+.button-text {
+    font-size: 14px;
+}
+
+.recent-files {
+    min-height: 100px;
+}
+
+.empty-recent {
+    text-align: center;
+    color: #999999;
+    font-style: italic;
+    margin-top: 20px;
+}
+
+.welcome-footer {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #383838;
+}
+
+.version-info {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 12px;
+    color: #999999;
+}
+
+/* 浅色主题支持 */
+body.theme-light .editor-container,
+body[data-theme="light"] .editor-container,
+body[data-editor-theme="light"] .editor-container {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+body.theme-light .tab-bar,
+body[data-theme="light"] .tab-bar,
+body[data-editor-theme="light"] .tab-bar {
+    background-color: #f3f3f3;
+    border-bottom-color: #e1e1e1;
+}
+
+body.theme-light .tab,
+body[data-theme="light"] .tab,
+body[data-editor-theme="light"] .tab {
+    background-color: #f3f3f3;
+    border-right-color: #e1e1e1;
+    color: #333333;
+}
+
+body.theme-light .tab:hover,
+body[data-theme="light"] .tab:hover,
+body[data-editor-theme="light"] .tab:hover {
+    background-color: #e8e8e8;
+}
+
+body.theme-light .tab.active,
+body[data-theme="light"] .tab.active,
+body[data-editor-theme="light"] .tab.active {
+    background-color: #ffffff;
+    border-bottom-color: #ffffff;
+}
+
+body.theme-light .tab-label,
+body[data-theme="light"] .tab-label,
+body[data-editor-theme="light"] .tab-label {
+    color: #333333;
+}
+
+body.theme-light .tab.active .tab-label,
+body[data-theme="light"] .tab.active .tab-label,
+body[data-editor-theme="light"] .tab.active .tab-label {
+    color: #000000;
+}
+
+body.theme-light .tab-close,
+body[data-theme="light"] .tab-close,
+body[data-editor-theme="light"] .tab-close {
+    color: #6a6a6a;
+}
+
+body.theme-light .tab-close:hover,
+body[data-theme="light"] .tab-close:hover,
+body[data-editor-theme="light"] .tab-close:hover {
+    background-color: #cccccc;
+    color: #333333;
+}
+
+body.theme-light .tab-add,
+body[data-theme="light"] .tab-add,
+body[data-editor-theme="light"] .tab-add {
+    color: #6a6a6a;
+}
+
+body.theme-light .tab-add:hover,
+body[data-theme="light"] .tab-add:hover,
+body[data-editor-theme="light"] .tab-add:hover {
+    background-color: #e8e8e8;
+    color: #333333;
+}
+
+body.theme-light .editor-area,
+body[data-theme="light"] .editor-area,
+body[data-editor-theme="light"] .editor-area {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+body.theme-light .welcome-page,
+body[data-theme="light"] .welcome-page,
+body[data-editor-theme="light"] .welcome-page {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+body.theme-light .welcome-header h1,
+body[data-theme="light"] .welcome-header h1,
+body[data-editor-theme="light"] .welcome-header h1 {
+    color: #000000;
+}
+
+body.theme-light .welcome-button,
+body[data-theme="light"] .welcome-button,
+body[data-editor-theme="light"] .welcome-button {
+    background-color: #0066cc;
+    color: #ffffff;
+    border-color: #0066cc;
+}
+
+body.theme-light .welcome-button:hover,
+body[data-theme="light"] .welcome-button:hover,
+body[data-editor-theme="light"] .welcome-button:hover {
+    background-color: #004499;
+    border-color: #004499;
+}
+
+body.theme-light .welcome-footer,
+body[data-theme="light"] .welcome-footer,
+body[data-editor-theme="light"] .welcome-footer {
+    border-top-color: #e1e1e1;
+}
+
+body.theme-light .version-info,
+body[data-theme="light"] .version-info,
+body[data-editor-theme="light"] .version-info {
+    color: #6a6a6a;
+}
+
+body.theme-light .line-numbers,
+body[data-theme="light"] .line-numbers,
+body[data-editor-theme="light"] .line-numbers {
+    background-color: #f8f8f8;
+    border-right-color: #e1e1e1;
+    color: #6a6a6a;
+}
+
+body.theme-light .line-number:hover,
+body[data-theme="light"] .line-number:hover,
+body[data-editor-theme="light"] .line-number:hover {
+    color: #333333;
+}
+
+body.theme-light .code-editor,
+body[data-theme="light"] .code-editor,
+body[data-editor-theme="light"] .code-editor {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+body.theme-light .code-editor::placeholder,
+body[data-theme="light"] .code-editor::placeholder,
+body[data-editor-theme="light"] .code-editor::placeholder {
+    color: #999999;
+}

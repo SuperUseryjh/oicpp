@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OICPP IDE - 调试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #cccccc;
+            overflow: hidden;
+        }
+        
+        .titlebar {
+            height: 30px;
+            background: #323233;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            border-bottom: 1px solid #464647;
+            -webkit-app-region: drag;
+        }
+        
+        .titlebar-title {
+            font-size: 13px;
+            font-weight: normal;
+        }
+        
+        .titlebar-controls {
+            display: flex;
+            -webkit-app-region: no-drag;
+        }
+        
+        .titlebar-button {
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: transparent;
+            color: #cccccc;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .titlebar-button:hover {
+            background: #404040;
+        }
+        
+        .titlebar-button.close:hover {
+            background: #e74c3c;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 30px);
+        }
+        
+        .debug-panel {
+            width: 100%;
+            background: #252526;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .debug-welcome {
+            text-align: center;
+            margin-top: 100px;
+        }
+        
+        .debug-welcome h1 {
+            color: #ffffff;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .debug-welcome p {
+            color: #cccccc;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .debug-info {
+            background: #2d2d30;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .debug-info h2 {
+            color: #ffffff;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .debug-info ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .debug-info li {
+            color: #cccccc;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .debug-info li:before {
+            content: "•";
+            color: #0078d4;
+            position: absolute;
+            left: 0;
+        }
+        
+        .debug-status {
+            background: #0e639c;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .debug-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .debug-btn {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .debug-btn:hover {
+            background: #106ebe;
+        }
+        
+        .debug-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .debug-output {
+            background: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            min-height: 200px;
+            display: none;
+        }
+        
+        .debug-output.active {
+            display: block;
+        }
+        
+        .gdb-command {
+            color: #4ec9b0;
+        }
+        
+        .gdb-output {
+            color: #dcdcaa;
+        }
+        
+        .gdb-error {
+            color: #f44747;
+        }
+    </style>
+</head>
+<body>
+    <div class="titlebar">
+        <div class="titlebar-title">OICPP IDE - 调试器</div>
+        <div class="titlebar-controls">
+            <button class="titlebar-button minimize" title="最小化">
+                <span>─</span>
+            </button>
+            <button class="titlebar-button maximize" title="最大化">
+                <span>□</span>
+            </button>
+            <button class="titlebar-button close" title="关闭">
+                <span>×</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="debug-panel">
+            <div class="debug-welcome">
+                <h1>🐛 调试器</h1>
+                <p>请开始调试以显示调试信息</p>
+                <p>调试器将通过 GDB 与您的程序交互</p>
+                
+                <div class="debug-info">
+                    <h2>调试功能</h2>
+                    <ul>
+                        <li>设置和管理断点</li>
+                        <li>单步执行代码</li>
+                        <li>查看变量值</li>
+                        <li>监控程序状态</li>
+                        <li>分析调用堆栈</li>
+                    </ul>
+                </div>
+                
+                <div class="debug-status" id="debug-status">
+                    调试器未连接
+                </div>
+                
+                <div class="debug-controls">
+                    <button class="debug-btn" id="start-debug" onclick="startDebug()">开始调试</button>
+                    <button class="debug-btn" id="stop-debug" onclick="stopDebug()" disabled>停止调试</button>
+                    <button class="debug-btn" id="step-over" onclick="stepOver()" disabled>单步执行</button>
+                    <button class="debug-btn" id="continue-debug" onclick="continueDebug()" disabled>继续</button>
+                </div>
+                
+                <div class="debug-output" id="debug-output">
+                    <div class="gdb-command">等待调试会话...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const { spawn } = require('child_process');
+        
+        let gdbProcess = null;
+        let isDebugging = false;
+        
+        // 调试状态管理
+        function updateDebugStatus(status) {
+            const statusElement = document.getElementById('debug-status');
+            statusElement.textContent = status;
+            
+            // 更新按钮状态
+            const startBtn = document.getElementById('start-debug');
+            const stopBtn = document.getElementById('stop-debug');
+            const stepBtn = document.getElementById('step-over');
+            const continueBtn = document.getElementById('continue-debug');
+            
+            if (isDebugging) {
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                stepBtn.disabled = false;
+                continueBtn.disabled = false;
+            } else {
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                stepBtn.disabled = true;
+                continueBtn.disabled = true;
+            }
+        }
+        
+        // 添加调试输出
+        function addDebugOutput(text, type = 'output') {
+            const outputDiv = document.getElementById('debug-output');
+            const line = document.createElement('div');
+            line.className = `gdb-${type}`;
+            line.textContent = text;
+            outputDiv.appendChild(line);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            
+            // 显示输出面板
+            outputDiv.classList.add('active');
+        }
+        
+        // 开始调试
+        function startDebug() {
+            try {
+                // 启动 GDB 进程
+                gdbProcess = spawn('gdb', ['--interpreter=mi'], {
+                    stdio: ['pipe', 'pipe', 'pipe']
+                });
+                
+                isDebugging = true;
+                updateDebugStatus('调试器已连接，等待程序...');
+                
+                // 处理 GDB 输出
+                gdbProcess.stdout.on('data', (data) => {
+                    const output = data.toString();
+                    addDebugOutput(output, 'output');
+                });
+                
+                gdbProcess.stderr.on('data', (data) => {
+                    const error = data.toString();
+                    addDebugOutput(error, 'error');
+                });
+                
+                gdbProcess.on('close', (code) => {
+                    isDebugging = false;
+                    updateDebugStatus('调试会话已结束');
+                    addDebugOutput(`GDB 进程退出，代码: ${code}`, 'command');
+                });
+                
+                // 发送初始化命令
+                sendGdbCommand('-gdb-version');
+                
+            } catch (error) {
+                addDebugOutput(`启动调试器失败: ${error.message}`, 'error');
+                updateDebugStatus('调试器启动失败');
+            }
+        }
+        
+        // 停止调试
+        function stopDebug() {
+            if (gdbProcess) {
+                gdbProcess.kill();
+                gdbProcess = null;
+            }
+            isDebugging = false;
+            updateDebugStatus('调试器已断开连接');
+        }
+        
+        // 单步执行
+        function stepOver() {
+            if (gdbProcess) {
+                sendGdbCommand('-exec-next');
+            }
+        }
+        
+        // 继续执行
+        function continueDebug() {
+            if (gdbProcess) {
+                sendGdbCommand('-exec-continue');
+            }
+        }
+        
+        // 发送 GDB 命令
+        function sendGdbCommand(command) {
+            if (gdbProcess && gdbProcess.stdin) {
+                addDebugOutput(`(gdb) ${command}`, 'command');
+                gdbProcess.stdin.write(command + '\n');
+            }
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDebugStatus('调试器未连接');
+            
+            // 设置窗口控制
+            document.querySelector('.minimize').addEventListener('click', () => {
+                ipcRenderer.send('window-minimize');
+            });
+            
+            document.querySelector('.maximize').addEventListener('click', () => {
+                ipcRenderer.send('window-maximize');
+            });
+            
+            document.querySelector('.close').addEventListener('click', () => {
+                if (isDebugging) {
+                    stopDebug();
+                }
+                window.close();
+            });
+        });
+        
+        // 监听来自主进程的调试命令
+        ipcRenderer.on('debug-command', (event, command) => {
+            if (command === 'start') {
+                startDebug();
+            } else if (command === 'stop') {
+                stopDebug();
+            }
+        });
+        
+        // 在窗口关闭时清理
+        window.addEventListener('beforeunload', () => {
+            if (isDebugging) {
+                stopDebug();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+/* 查找替换面板样式 */
+.find-replace-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 380px;
+    background: var(--bg-color, #1e1e1e);
+    border: 1px solid var(--border-color, #3c3c3c);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: none;
+    animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.find-replace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--header-bg, #2d2d30);
+    border-bottom: 1px solid var(--border-color, #3c3c3c);
+    border-radius: 8px 8px 0 0;
+}
+
+.find-replace-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color, #cccccc);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--text-color, #cccccc);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: var(--hover-bg, #3e3e42);
+    color: #ffffff;
+}
+
+.find-replace-content {
+    padding: 16px;
+}
+
+.find-section, .replace-section {
+    margin-bottom: 16px;
+}
+
+.find-section label, .replace-section label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-color, #cccccc);
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.input-group {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.find-input, .replace-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color, #3c3c3c);
+    border-radius: 4px;
+    background: var(--input-bg, #1e1e1e);
+    color: var(--text-color, #cccccc);
+    font-size: 13px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    transition: border-color 0.2s;
+}
+
+.find-input:focus, .replace-input:focus {
+    outline: none;
+    border-color: var(--primary-color, #007acc);
+    box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
+.find-buttons, .replace-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.find-btn, .replace-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color, #3c3c3c);
+    border-radius: 4px;
+    background: var(--button-bg, #2d2d30);
+    color: var(--text-color, #cccccc);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    min-width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.find-btn:hover, .replace-btn:hover {
+    background: var(--hover-bg, #3e3e42);
+    border-color: var(--primary-color, #007acc);
+    color: #ffffff;
+}
+
+.find-btn:active, .replace-btn:active {
+    background: var(--active-bg, #0e639c);
+}
+
+.find-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 8px 0;
+}
+
+.find-options label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 0;
+    color: var(--text-color, #cccccc);
+    transition: color 0.2s;
+}
+
+.find-options label:hover {
+    color: #ffffff;
+}
+
+.find-options input[type="checkbox"] {
+    margin: 0;
+    width: 14px;
+    height: 14px;
+    accent-color: var(--primary-color, #007acc);
+}
+
+.find-status {
+    font-size: 12px;
+    color: var(--text-secondary, #858585);
+    padding: 6px 8px;
+    text-align: center;
+    background: var(--status-bg, rgba(255, 255, 255, 0.05));
+    border-radius: 4px;
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+.find-status.no-results {
+    color: #f14c4c;
+    background: rgba(241, 76, 76, 0.1);
+}
+
+.replace-buttons .replace-btn {
+    font-size: 12px;
+    padding: 8px 12px;
+    font-weight: 500;
+}
+
+/* 搜索匹配高亮样式 */
+.search-match {
+    background: linear-gradient(135deg, rgba(255, 255, 0, 0.4), rgba(255, 255, 0, 0.3));
+    border: 1px solid rgba(255, 255, 0, 0.6);
+    border-radius: 3px;
+    box-shadow: 0 0 2px rgba(255, 255, 0, 0.4);
+    animation: fadeIn 0.3s ease-in-out;
+    position: relative;
+}
+
+.search-match-current {
+    background: linear-gradient(135deg, rgba(255, 165, 0, 0.7), rgba(255, 165, 0, 0.5));
+    border: 2px solid #ff8800;
+    border-radius: 3px;
+    box-shadow: 
+        0 0 6px rgba(255, 136, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    animation: pulseHighlight 1.5s ease-in-out infinite alternate;
+    position: relative;
+    z-index: 10;
+}
+
+.search-match-current::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, transparent, rgba(255, 136, 0, 0.3), transparent);
+    border-radius: 4px;
+    z-index: -1;
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: scale(0.8);
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+}
+
+@keyframes pulseHighlight {
+    from { 
+        box-shadow: 
+            0 0 6px rgba(255, 136, 0, 0.6),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    to { 
+        box-shadow: 
+            0 0 12px rgba(255, 136, 0, 0.8),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+}
+
+@keyframes shimmer {
+    0%, 100% { 
+        opacity: 0.5; 
+        transform: translateX(-100%);
+    }
+    50% { 
+        opacity: 1; 
+        transform: translateX(100%);
+    }
+}
+
+/* 暗色主题适配 */
+:root {
+    --find-replace-bg: #2d2d30;
+    --find-replace-border: #3e3e42;
+    --find-replace-header-bg: #37373d;
+    --find-replace-input-bg: #3c3c3c;
+    --find-replace-button-bg: #0e639c;
+    --find-replace-button-hover: #1177bb;
+}
+
+.dark-theme .find-replace-panel {
+    background: var(--find-replace-bg);
+    border-color: var(--find-replace-border);
+}
+
+.dark-theme .find-replace-header {
+    background: var(--find-replace-header-bg);
+    border-color: var(--find-replace-border);
+}
+
+.dark-theme .find-input,
+.dark-theme .replace-input {
+    background: var(--find-replace-input-bg);
+    border-color: var(--find-replace-border);
+    color: #cccccc;
+}
+
+.dark-theme .find-btn,
+.dark-theme .replace-btn {
+    background: var(--find-replace-button-bg);
+    border-color: var(--find-replace-border);
+    color: #ffffff;
+}
+
+.dark-theme .find-btn:hover,
+.dark-theme .replace-btn:hover {
+    background: var(--find-replace-button-hover);
+}

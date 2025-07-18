@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑器设置</title>
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <div class="settings-container">
+        <div class="settings-header">
+            <h2>编辑器设置</h2>
+        </div>
+        
+        <div class="settings-content">
+            <div class="setting-group">
+                <label for="editor-font">字体：</label>
+                <div class="input-group">
+                    <select id="editor-font" class="form-select">
+                        <option value="Consolas">Consolas</option>
+                        <option value="Monaco">Monaco</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Source Code Pro">Source Code Pro</option>
+                        <option value="Fira Code">Fira Code</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label for="editor-font-size">字体大小：</label>
+                <input type="number" id="editor-font-size" min="8" max="72" value="14">
+            </div>
+
+            <div class="setting-group">
+                <label for="editor-theme">主题：</label>
+                <select id="editor-theme" class="form-select">
+                    <option value="dark">深色主题</option>
+                    <option value="light">浅色主题</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="auto-completion" checked>
+                    <span class="checkmark"></span>
+                    启用自动补全
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-footer">
+            <button id="save-settings" class="btn btn-primary">保存设置</button>
+            <button id="cancel-settings" class="btn btn-secondary">取消</button>
+            <button id="reset-settings" class="btn btn-warning">重置为默认值</button>
+        </div>
+    </div>
+
+    <!-- 字体下载对话框 -->
+    <div id="font-download-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>下载字体</h3>
+                <button id="close-font-dialog" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>选择要下载的字体：</p>
+                <div id="font-list" class="font-list">
+                    <!-- 字体列表将在这里动态加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示容器 -->
+    <div id="message-container"></div>
+
+    <script src="../js/electron-helper.js"></script>
+    <script src="editor.js"></script>
+</body>
+</html>

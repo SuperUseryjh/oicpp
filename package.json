@@ -1,0 +1,40 @@
+{
+  "name": "oicpp-ide",
+  "version": "1.0.0-alpha3",
+  "description": "OICPP IDE for competitive programming",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.0"
+  },
+  "dependencies": {
+    "axios": "latest",
+    "extract-zip": "latest",
+    "monaco-editor": "^0.52.2",
+    "node-stream-zip": "^1.15.0",
+    "winreg": "latest"
+  },
+  "build": {
+    "appId": "com.oicpp.ide",
+    "productName": "OICPP IDE",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "oicpp.ico",
+      "forceCodeSigning": false
+    }
+  }
+}

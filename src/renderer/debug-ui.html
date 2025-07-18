@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试界面</title>
+    <link rel="stylesheet" href="css/debug.css">
+</head>
+<body>
+    <div class="debug-container">
+        <div class="debug-header">
+            <h3>调试控制台</h3>
+            <div class="debug-controls">
+                <button id="debug-start" class="debug-btn" title="开始调试 (F5)">
+                    <span class="icon">▶</span>
+                    开始调试
+                </button>
+                <button id="debug-stop" class="debug-btn" title="停止调试" disabled>
+                    <span class="icon">⏸</span>
+                    停止调试
+                </button>
+                <button id="debug-step-over" class="debug-btn" title="步过 (F10)" disabled>
+                    <span class="icon">↷</span>
+                    步过
+                </button>
+                <button id="debug-step-into" class="debug-btn" title="步入 (F11)" disabled>
+                    <span class="icon">↓</span>
+                    步入
+                </button>
+                <button id="debug-step-out" class="debug-btn" title="步出 (Shift+F11)" disabled>
+                    <span class="icon">↑</span>
+                    步出
+                </button>
+                <button id="debug-continue" class="debug-btn" title="继续 (F5)" disabled>
+                    <span class="icon">▶</span>
+                    继续
+                </button>
+            </div>
+        </div>
+        
+        <div class="debug-content">
+            <div class="debug-sidebar">
+                <div class="debug-section">
+                    <h4>变量</h4>
+                    <div class="variables-panel">
+                        <div class="variable-category">
+                            <div class="category-header">
+                                <span class="expand-arrow">▼</span>
+                                <span>局部变量</span>
+                            </div>
+                            <div class="category-content">
+                                <div id="local-variables" class="variable-list">
+                                    <div class="no-debug-message">请开始调试以查看变量</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="variable-category">
+                            <div class="category-header">
+                                <span class="expand-arrow">▼</span>
+                                <span>全局变量</span>
+                            </div>
+                            <div class="category-content">
+                                <div id="global-variables" class="variable-list">
+                                    <div class="no-debug-message">请开始调试以查看变量</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="debug-section">
+                    <h4>调用堆栈</h4>
+                    <div id="call-stack" class="call-stack-panel">
+                        <div class="no-debug-message">请开始调试以查看调用堆栈</div>
+                    </div>
+                </div>
+                
+                <div class="debug-section">
+                    <h4>断点</h4>
+                    <div id="breakpoints" class="breakpoints-panel">
+                        <div class="no-breakpoints-message">没有设置断点</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="debug-main">
+                <div class="debug-output">
+                    <div class="output-header">
+                        <h4>调试输出</h4>
+                        <button id="clear-output" class="clear-btn">清除</button>
+                    </div>
+                    <div id="debug-console" class="console-output">
+                        <div class="console-message info">调试器已准备就绪</div>
+                        <div class="console-message info">设置断点并开始调试...</div>
+                    </div>
+                </div>
+                
+                <div class="debug-input">
+                    <div class="input-header">
+                        <h4>程序输入</h4>
+                    </div>
+                    <textarea id="program-input" class="input-area" placeholder="在此输入程序运行时的数据..."></textarea>
+                    <div class="input-controls">
+                        <button id="send-input" class="send-btn" disabled>发送输入</button>
+                        <button id="clear-input" class="clear-btn">清除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/debug-ui.js"></script>
+</body>
+</html>
