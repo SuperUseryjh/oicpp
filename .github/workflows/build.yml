@@ -21,3 +21,9 @@ jobs:
 
     - name: Build project
       run: npm run build -- --publish never
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: oicpp-build-artifacts
+        path: dist/
