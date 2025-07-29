@@ -1,0 +1,20 @@
+<div class="panel-content test-case-panel">
+    <div class="test-case-controls">
+        <div class="control-group">
+            <label for="platform-select">选择平台:</label>
+            <select id="platform-select">
+                <option value="Atcoder">Atcoder</option>
+                <!-- 可以添加其他平台 -->
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="url-input">URL:</label>
+            <input type="text" id="url-input" placeholder="输入题目URL">
+        </div>
+        <button id="fetch-test-cases-btn">获取测试用例</button>
+    </div>
+    <div class="test-case-results">
+        <div id="test-case-message" class="message"></div>
+        <div id="test-cases-container"></div>
+    </div>
+</div>
