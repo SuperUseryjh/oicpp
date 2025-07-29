@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -358,6 +359,13 @@ function createMenuBar() {
           accelerator: 'F11',
           click: () => {
             mainWindow.webContents.send('menu-compile-run');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: '获取测试用例',
+          click: () => {
+            mainWindow.webContents.send('menu-fetch-test-cases');
           }
         }
       ]
@@ -1198,28 +1206,13 @@ function setupIPC() {
   });
 
   // 获取已下载的编译器版本
-  ipcMain.handle('get-downloaded-compilers', async () => {
-    console.log('[获取已下载编译器] 开始获取已下载编译器列表');
+  ipcMain.handle('get-downloaded-compilers', async (event, { url, platform }) => {
     try {
-      const userHome = os.homedir();
-      const compilersDir = path.join(userHome, '.oicpp', 'Compilers');
-      console.log('[获取已下载编译器] 编译器目录:', compilersDir);
-      
-      if (!fs.existsSync(compilersDir)) {
-        console.log('[获取已下载编译器] 编译器目录不存在，返回空列表');
-        return [];
-      }
-      
-      const versions = fs.readdirSync(compilersDir).filter(item => {
-        const itemPath = path.join(compilersDir, item);
-        return fs.statSync(itemPath).isDirectory();
-      });
-      
-      console.log('[获取已下载编译器] 找到的版本:', versions);
-      return versions;
+      const testCases = await fetchTestCasesFromUrl(url, platform);
+      return { success: true, testCases };
     } catch (error) {
-      console.error('[获取已下载编译器] 获取已下载编译器失败:', error);
-      return [];
+      console.error('获取测试用例失败:', error);
+      return { success: false, error: error.message };
     }
   });
 
@@ -1529,7 +1522,7 @@ function setupIPC() {
 
         updateProgress('下载完成，开始解压...', 100);
 
-        // 等待文件写入完成
+        // 等待文件���入完成
         await new Promise((resolve) => {
           writer.on('finish', resolve);
           writer.on('error', resolve);
@@ -1636,6 +1629,47 @@ function setupIPC() {
     }
   });
 }
+
+// 新增的获取测试用例函数
+async function fetchTestCasesFromUrl(url, platform) {
+  if (platform === 'Atcoder') {
+    try {
+      const response = await axios.get(url);
+      const htmlContent = response.data;
+
+      const testCases = [];
+      const regex = /<pre id="pre-sample(\d+)">([\s\S]*?)<\/pre>/g;
+      let match;
+      const extractedPreTags = [];
+
+      while ((match = regex.exec(htmlContent)) !== null) {
+        extractedPreTags.push({
+          id: parseInt(match[1]),
+          content: match[2].trim()
+        });
+      }
+
+      // 按照id排序，确保输入输出配对正确
+      extractedPreTags.sort((a, b) => a.id - b.id);
+
+      for (let i = 0; i < extractedPreTags.length; i += 2) {
+        if (i + 1 < extractedPreTags.length) {
+          testCases.push({
+            input: extractedPreTags[i].content,
+            output: extractedPreTags[i + 1].content
+          });
+        }
+      }
+      return testCases;
+    } catch (error) {
+      throw new Error(`无法从URL获取或解析HTML: ${error.message}`);
+    }
+  } else {
+    throw new Error(`不支持的平台: ${platform}`);
+  }
+}
+
+// 读取文件内容
 
 // 读取文件内容
 async function readFileContent(filePath) {

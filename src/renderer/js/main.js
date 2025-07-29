@@ -189,6 +189,9 @@ class OICPPApp {
             case 'check-update':
                 this.checkForUpdates();
                 break;
+            case 'fetch-test-cases':
+                this.showTestCasePanel();
+                break;
             default:
                 console.log('未知的菜单动作:', action);
         }
@@ -269,6 +272,10 @@ class OICPPApp {
             // 监听文件夹操作
             ipcRenderer.on('folder-opened', (event, folderPath) => {
                 this.onFolderOpened(folderPath);
+            });
+
+            ipcRenderer.on('menu-fetch-test-cases', () => {
+                this.showTestCasePanel();
             });
 
             console.log('IPC 事件监听器已设置');
@@ -708,6 +715,24 @@ class OICPPApp {
             console.warn('无法打开模板设置：Electron API 不可用');
             // 回退到内嵌对话框
             this.showSettingsDialog('templates');
+        }
+    }
+
+    showTestCasePanel() {
+        if (window.sidebarManager) {
+            window.sidebarManager.showPanel('test-cases');
+            // 动态加载test-case-manager.js
+            if (!document.querySelector('script[src*="test-case-manager.js"]')) {
+                const script = document.createElement('script');
+                script.src = 'js/test-case-manager.js';
+                script.onload = () => {
+                    console.log('测试用例管理器脚本已加载');
+                };
+                script.onerror = () => {
+                    console.error('测试用例管理器脚本加载失败');
+                };
+                document.head.appendChild(script);
+            }
         }
     }
 

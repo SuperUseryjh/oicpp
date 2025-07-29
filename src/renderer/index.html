@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="css/dialog.css">
     <link rel="stylesheet" href="css/find-replace.css">
     <link rel="stylesheet" href="css/compile-output.css">
+    <link rel="stylesheet" href="css/test-case.css">
 </head>
 <body>
     <!-- 自定义标题栏 -->
@@ -167,6 +168,11 @@
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                     </svg>
                 </div>
+                <div class="sidebar-icon" data-panel="test-cases" title="获取测试用例">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                </div>
             </div>
             <div class="sidebar-panel" id="sidebar-content">
                 <!-- 动态内容区域 -->
@@ -210,7 +216,7 @@
                         <span class="panel-title">样例测试器</span>
                     </div>
                     <div class="samples-content">
-                        <p>样例测试器功能正在开发中...</p>
+                        <p>样例测试器功能正���开发中...</p>
                     </div>
                 </div>
                 
@@ -261,6 +267,30 @@
                     </div>
                 </div>
                 
+                <div class="panel-content" id="test-cases-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">获取测试用例</span>
+                    </div>
+                    <div class="test-case-controls">
+                        <div class="control-group">
+                            <label for="platform-select">选择平台:</label>
+                            <select id="platform-select">
+                                <option value="Atcoder">Atcoder</option>
+                                <!-- 可以添加其他平台 -->
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="url-input">URL:</label>
+                            <input type="text" id="url-input" placeholder="输入题目URL">
+                        </div>
+                        <button id="fetch-test-cases-btn">获取测试用例</button>
+                    </div>
+                    <div class="test-case-results">
+                        <div id="test-case-message" class="message"></div>
+                        <div id="test-cases-container"></div>
+                    </div>
+                </div>
+
                 <div class="panel-content" id="account-panel">
                     <div class="panel-header">
                         <span class="panel-title">账户</span>

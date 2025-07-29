@@ -51,7 +51,9 @@
             downloadCompiler: (config) => ipcRenderer.invoke('download-compiler', config),
             selectCompiler: (version) => ipcRenderer.invoke('select-compiler', version),
             // 获取用户图标路径
-            getUserIconPath: () => ipcRenderer.invoke('get-user-icon-path')
+            getUserIconPath: () => ipcRenderer.invoke('get-user-icon-path'),
+            // 获取测试用例
+            fetchTestCases: (url, platform) => ipcRenderer.invoke('fetch-test-cases', { url, platform })
         };
         
         console.log('Electron IPC 管理器已初始化');
@@ -96,7 +98,9 @@
             downloadCompiler: () => Promise.resolve({ success: false, error: '需要在 Electron 环境中运行' }),
             selectCompiler: () => Promise.resolve({ success: false, error: '需要在 Electron 环境中运行' }),
             // 获取用户图标路径（模拟）
-            getUserIconPath: () => Promise.resolve('../../oicpp.ico')
+            getUserIconPath: () => Promise.resolve('../../oicpp.ico'),
+            // 获取测试用例（模拟）
+            fetchTestCases: () => Promise.resolve({ success: false, error: '需要在 Electron 环境中运行' })
         };
         
         console.warn('非 Electron 环境，使用模拟 IPC');
