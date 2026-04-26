@@ -1377,6 +1377,71 @@ function createWindow() {
         }
     });
 
+    ipcMain.handle('luogu-submit', async (_event, problemId, code, language, csrfToken) => {
+        const https = require('https');
+        const http = require('http');
+        const { URL } = require('url');
+
+        return new Promise((resolve, reject) => {
+            try {
+                const submitUrl = new URL(`https://www.luogu.com.cn/fe/api/problem/submit/${problemId}`);
+                const isHttps = submitUrl.protocol === 'https:';
+                const client = isHttps ? https : http;
+
+                const body = JSON.stringify({ code, language });
+
+                const options = {
+                    method: 'POST',
+                    hostname: submitUrl.hostname,
+                    port: submitUrl.port || (isHttps ? 443 : 80),
+                    path: `/fe/api/problem/submit/${problemId}`,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': body.length,
+                        'Accept': 'application/json',
+                        'Referer': `https://www.luogu.com.cn/problem/${problemId}`,
+                        'Origin': 'https://www.luogu.com.cn',
+                        'x-csrf-token': csrfToken,
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+                };
+
+                logInfo('洛谷提交请求:', options);
+
+                const req = client.request(options, (res) => {
+                    let data = '';
+                    res.on('data', (chunk) => data += chunk);
+                    res.on('end', () => {
+                        try {
+                            const result = JSON.parse(data);
+                            logInfo('洛谷提交响应:', result);
+                            resolve(result);
+                        } catch (e) {
+                            logError('解析提交响应失败:', e);
+                            reject(e);
+                        }
+                    });
+                });
+
+                req.on('error', (e) => {
+                    logError('提交请求失败:', e);
+                    reject(e);
+                });
+
+                req.setTimeout(30000, () => {
+                    req.destroy();
+                    reject(new Error('请求超时'));
+                });
+
+                req.write(body);
+                req.end();
+            } catch (e) {
+                logError('创建提交请求失败:', e);
+                reject(e);
+            }
+        });
+    });
+
     ipcMain.handle('get-update-download-status', () => {
         return getUpdateDownloadState();
     });

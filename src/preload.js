@@ -550,6 +550,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
+    luoguSubmit: (problemId, code, language, csrfToken) => ipcRenderer.invoke('luogu-submit', problemId, code, language, csrfToken),
+
     startIdeLogin: () => ipcRenderer.invoke('ide-login-start'),
     getIdeLoginStatus: () => ipcRenderer.invoke('ide-login-status'),
     logoutIdeAccount: () => ipcRenderer.invoke('ide-logout'),
