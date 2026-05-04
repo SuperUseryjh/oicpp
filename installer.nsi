@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "OICPP IDE"
-!define PRODUCT_VERSION "1.4.1"
+!define PRODUCT_VERSION "1.4.3"
 !define PRODUCT_PUBLISHER "mywwzh"
 !define PRODUCT_WEB_SITE "https://oicpp.mywwzh.top"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\OICPP IDE.exe"
@@ -97,6 +97,9 @@ Section "OICPP 主程序" SEC01
   SetOverwrite on
   File "dist\win-unpacked\ConsolePauser.exe"
   File "oicpp.ico"
+  SetOutPath "$PROFILE\.oicpp\LSP"
+  SetOverwrite on
+  File /r "dist\win-unpacked\resources\clangd\*"
   SetOutPath "$INSTDIR"
   SetOverwrite try
   File "dist\win-unpacked\chrome_100_percent.pak"
@@ -362,6 +365,7 @@ Section Uninstall
   Delete "$INSTDIR\chrome_100_percent.pak"
   Delete "$PROFILE\.oicpp\ConsolePauser.exe"
   Delete "$PROFILE\.oicpp\oicpp.ico"
+  RMDir /r "$PROFILE\.oicpp\LSP"
   RMDir "$PROFILE\.oicpp" 
 
   Delete "$SMPROGRAMS\OICPP IDE\Uninstall.lnk"

@@ -3,6 +3,8 @@ class EditorSettings {
         this.settings = {
             font: 'Consolas, "Courier New", monospace',
             fontSize: 14,
+            terminalFontSize: 14,
+            syntaxCheckEnabled: true,
             lineHeight: 0,
             theme: 'dark',
             syntaxColorsByTheme: {},
@@ -979,6 +981,8 @@ class EditorSettings {
                 this.settings = {
                     font: allSettings.font || 'Consolas',
                     fontSize: allSettings.fontSize || 14,
+                    terminalFontSize: allSettings.terminalFontSize || 14,
+                    syntaxCheckEnabled: allSettings.syntaxCheckEnabled !== false,
                     lineHeight: typeof allSettings.lineHeight === 'number' && allSettings.lineHeight > 0 ? allSettings.lineHeight : 0,
                     theme: allSettings.theme || 'dark',
                     syntaxColorsByTheme: (() => {
@@ -1015,6 +1019,8 @@ class EditorSettings {
                 this.settings = {
                     font: 'Consolas',
                     fontSize: 14,
+                    terminalFontSize: 14,
+                    syntaxCheckEnabled: true,
                     lineHeight: 0,
                     theme: 'dark',
                     syntaxColorsByTheme: {},
@@ -1038,6 +1044,8 @@ class EditorSettings {
             this.settings = {
                 font: 'Consolas',
                 fontSize: 14,
+                    terminalFontSize: 14,
+                    syntaxCheckEnabled: true,
                 lineHeight: 0,
                 theme: 'dark',
                 syntaxColorsByTheme: {},
@@ -1142,6 +1150,7 @@ class EditorSettings {
         const fontSelect = document.getElementById('editor-font');
         const themeSelect = document.getElementById('editor-theme');
         const fontSizeInput = document.getElementById('editor-font-size');
+        const terminalFontSizeInput = document.getElementById('editor-terminal-font-size');
         const lineHeightInput = document.getElementById('editor-line-height');
 
         const newSettings = {};
@@ -1149,6 +1158,7 @@ class EditorSettings {
         if (fontSelect) newSettings.font = fontSelect.value;
         if (themeSelect) newSettings.theme = themeSelect.value;
         if (fontSizeInput) newSettings.fontSize = parseInt(fontSizeInput.value);
+        if (terminalFontSizeInput) newSettings.terminalFontSize = parseInt(terminalFontSizeInput.value);
         if (lineHeightInput) {
             const parsedLineHeight = parseInt(lineHeightInput.value, 10);
             newSettings.lineHeight = !Number.isNaN(parsedLineHeight) && parsedLineHeight > 0 ? parsedLineHeight : 0;
@@ -1165,6 +1175,11 @@ class EditorSettings {
             if (!Number.isNaN(parsedTabSize) && parsedTabSize > 0) {
                 newSettings.tabSize = parsedTabSize;
             }
+        }
+
+        const syntaxCheckCheckbox = document.getElementById('editor-syntax-check-enabled');
+        if (syntaxCheckCheckbox) {
+            newSettings.syntaxCheckEnabled = !!syntaxCheckCheckbox.checked;
         }
 
         const autoCompletionCheckbox = document.getElementById('editor-auto-completion');
@@ -1340,6 +1355,7 @@ class EditorSettings {
     updateUI() {
         const fontSelect = document.getElementById('editor-font');
         const fontSizeInput = document.getElementById('editor-font-size');
+        const terminalFontSizeInput = document.getElementById('editor-terminal-font-size');
         const lineHeightInput = document.getElementById('editor-line-height');
         const themeSelect = document.getElementById('editor-theme');
         const foldingCheckbox = document.getElementById('editor-folding');
@@ -1347,6 +1363,7 @@ class EditorSettings {
         const ligaturesCheckbox = document.getElementById('editor-font-ligatures');
         const tabSizeInput = document.getElementById('editor-tab-size');
         const autoCompletionCheckbox = document.getElementById('editor-auto-completion');
+        const syntaxCheckCheckbox = document.getElementById('editor-syntax-check-enabled');
         const autoSaveCheckbox = document.getElementById('editor-auto-save-enabled');
         const autoSaveIntervalInput = document.getElementById('editor-auto-save-interval');
         const autoOpenLastWorkspaceCheckbox = document.getElementById('editor-auto-open-last-workspace');
@@ -1376,6 +1393,11 @@ class EditorSettings {
         if (fontSizeInput && this.settings.fontSize) {
             fontSizeInput.value = this.settings.fontSize;
             logInfo('字体大小已更新:', fontSizeInput.value);
+        }
+
+        if (terminalFontSizeInput && this.settings.terminalFontSize) {
+            terminalFontSizeInput.value = this.settings.terminalFontSize;
+            logInfo('终端字号已更新:', terminalFontSizeInput.value);
         }
 
         if (lineHeightInput) {
@@ -1408,6 +1430,10 @@ class EditorSettings {
 
         if (autoCompletionCheckbox) {
             autoCompletionCheckbox.checked = this.settings.enableAutoCompletion !== false;
+        }
+
+        if (syntaxCheckCheckbox) {
+            syntaxCheckCheckbox.checked = this.settings.syntaxCheckEnabled !== false;
         }
 
         const autoSaveEnabled = this.settings.autoSave !== false;

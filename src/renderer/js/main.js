@@ -5,6 +5,8 @@ class OICPPApp {
         this.settings = {
             theme: 'dark',
             fontSize: 14,
+            terminalFontSize: 14,
+            syntaxCheckEnabled: true,
             syntaxColorsByTheme: {},
             syntaxFontStyles: {},
             tabSize: 4,
@@ -23,6 +25,7 @@ class OICPPApp {
     this._debugExited = false;
     this._debugTerminalId = null;
     this._debugTerminalBridgeEnabled = false;
+    this._debugSessionTerminalId = null;
         this.terminalPanel = null;
         this.updateDownloadState = {
             autoChecking: false,
@@ -87,6 +90,12 @@ class OICPPApp {
             this.updateStatusBar();
             this.setAppIcon();
             this.initialized = true;
+
+            // 主动启动 LSP 语言服务器（设置已加载，可获得正确编译参数）
+            this.startLspIfNeeded();
+
+            // 监听 Monaco 标记变化，实时更新状态栏
+            this._setupMarkerChangeListener();
             
             logInfo('OICPP App 初始化完成');
         } catch (error) {
@@ -270,6 +279,9 @@ class OICPPApp {
                 break;
             case 'check-update':
                 this.checkForUpdates();
+                break;
+            case 'open-source-licenses':
+                this.showOpenSourceLicenses();
                 break;
             case 'ide-login':
                 await this.startIdeLogin();
@@ -1136,6 +1148,7 @@ class OICPPApp {
             font: this.settings.font || 'Consolas',
             fontSize: this.settings.fontSize || 14,
             theme: this.settings.theme || 'dark',
+            syntaxCheckEnabled: this.settings.syntaxCheckEnabled !== false,
             syntaxColorsByTheme: this.settings.syntaxColorsByTheme,
             syntaxFontStyles: this.settings.syntaxFontStyles,
             syntaxColors: this.settings.syntaxColors,
@@ -1958,31 +1971,58 @@ class OICPPApp {
             return '';
         }
 
-        const isWindows = !!(typeof process !== 'undefined' && process.platform === 'win32');
-        if (!isWindows) {
-            return text;
-        }
-
-        // Hide common GDB runtime noise while keeping user program output.
+        // Hide common GDB runtime noise while keeping user program output (all platforms).
         text = text
             .replace(/\[(?:New Thread [^\]\r\n]*)\]\r?\n?/g, '')
             .replace(/\[(?:Thread [^\]\r\n]* exited(?: with code [^\]\r\n]*)?)\]\r?\n?/g, '')
-            .replace(/\[(?:Inferior [^\]\r\n]* exited[^\]\r\n]*)\]\r?\n?/g, '');
+            .replace(/\[(?:Inferior [^\]\r\n]* exited[^\]\r\n]*)\]\r?\n?/g, '')
+            .replace(/\[(?:Switching to thread [^\]\r\n]*)\]\r?\n?/g, '')
+            .replace(/^Type\s+"show\s+configuration".*\r?\n?/gm, '')
+            .replace(/^For\s+bug\s+reporting\s+instructions.*\r?\n?/gm, '')
+            .replace(/^Find\s+the\s+GDB\s+manual.*\r?\n?/gm, '')
+            .replace(/^For\s+help,\s+type\s+"help".*\r?\n?/gm, '')
+            .replace(/^Type\s+"apropos\s+word".*\r?\n?/gm, '')
+            .replace(/^https?:\/\/[^\s]+\r?\n?/gm, '')
+            .replace(/^Reading\s+symbols\s+from\s+.*\r?\n?/gm, '')
+            .replace(/^Starting\s+program:\s+.*\r?\n?/gm, '')
+            .replace(/^Breakpoint\s+\d+\s+at\s+.*\r?\n?/gm, '')
+            .replace(/^Thread\s+\d+\s+hit\s+(?:Breakpoint|Catchpoint)\s+\d+.*\r?\n?/gm, '')
+            .replace(/^Continuing\.\r?\n?/gm, '')
+            .replace(/^No\s+arguments\.\r?\n?/gm, '')
+            .replace(/^No\s+locals\.\r?\n?/gm, '')
+            .replace(/^#\d+\s+.*\s+at\s+.*\r?\n?/gm, '')
+            .replace(/^\$\d+\s*=.*\r?\n?/gm, '')
+            .replace(/^\[Loading\s+[^\]]*\]\r?\n?/gm, '');
 
         return text;
     }
 
     unbindDebugTerminalBridge() {
-        if (!this.terminalPanel || !this._debugTerminalId) {
-            this._debugTerminalBridgeEnabled = false;
-            this._debugTerminalId = null;
-            return;
+        const terminalId = this._debugTerminalId || this._debugSessionTerminalId;
+
+        // 清除输入桥接（如果存在）
+        if (this._debugTerminalId && this.terminalPanel) {
+            this.terminalPanel.clearInputBridge(this._debugTerminalId);
+            this.terminalPanel.setRemoteOutputMuted(this._debugTerminalId, false);
         }
 
-        this.terminalPanel.clearInputBridge(this._debugTerminalId);
-        this.terminalPanel.setRemoteOutputMuted(this._debugTerminalId, false);
+        // 恢复终端：发送换行以强制 shell 打印新提示符
+        if (terminalId && this.terminalPanel) {
+            // 先尝试通过 IPC 写入 PTY
+            try {
+                if (window.electronAPI && typeof window.electronAPI.writeTerminal === 'function') {
+                    window.electronAPI.writeTerminal(terminalId, '\n');
+                }
+            } catch (_) { }
+            // 同时直接写入 xterm.js 显示层，确保用户能看到换行
+            try {
+                this.terminalPanel.writeTerminalOutput(terminalId, '\r\n');
+            } catch (_) { }
+        }
+
         this._debugTerminalBridgeEnabled = false;
         this._debugTerminalId = null;
+        this._debugSessionTerminalId = null;
     }
 
     appendDebugTerminalOutput(data) {
@@ -2365,6 +2405,7 @@ class OICPPApp {
                 const currentFont = this.settings.font || 'Consolas';
                 const currentTheme = this.settings.theme || 'dark';
                 const currentFontSize = this.settings.fontSize || 14;
+                const currentTerminalFontSize = this.settings.terminalFontSize || 14;
                 
                 logInfo('编辑器设置对话框 - 当前设置:', {
                     font: currentFont,
@@ -2403,6 +2444,10 @@ class OICPPApp {
                     <div class="setting-item">
                         <label>字体大小:</label>
                         <input type="number" id="editor-font-size" value="${currentFontSize}" min="8" max="32">
+                    </div>
+                    <div class="setting-item">
+                        <label>终端字号:</label>
+                        <input type="number" id="editor-terminal-font-size" value="${currentTerminalFontSize}" min="8" max="32">
                     </div>
                     <div class="setting-item">
                         <label style="color: #ff9500;">注意:</label>
@@ -2593,7 +2638,7 @@ class OICPPApp {
             
             if (!gdbStatus.available) {
                 this.showMessage(gdbStatus.message, 'error');
-                this.showGDBInstallGuide(gdbStatus);
+                this.showDebugStatus(gdbStatus.message);
                 return;
             }
             
@@ -2631,12 +2676,14 @@ class OICPPApp {
             const debugRunMode = this.resolveRunModeForCurrentPlatform();
             let inferiorTTY = '';
             let useInputBridge = false;
+            let terminalId = '';
             if (debugRunMode === 'integrated-terminal') {
                 try {
                     this.compilerManager?.hideOutput?.();
                 } catch (_) { }
                 const openedTerminalId = await this.openIntegratedTerminal({ forceCreate: true });
-                const terminalId = openedTerminalId || this.terminalPanel?.activeId || null;
+                terminalId = openedTerminalId || this.terminalPanel?.activeId || '';
+                this._debugSessionTerminalId = terminalId || null;
                 this.unbindDebugTerminalBridge();
                 const isUnixLike = this.isUnixLikePlatform();
 
@@ -2645,19 +2692,20 @@ class OICPPApp {
                 }
 
                 if (this.isLinuxPlatform()) {
-                    // Linux integrated terminal is more stable with direct input bridge.
+                    // Linux: 使用输入桥接模式（稳定可靠，不经 inferior-tty + tcsetpgrp）
                     useInputBridge = this.bindDebugTerminalBridge(terminalId);
                     if (!useInputBridge) {
                         inferiorTTY = await this.resolveTerminalTTYForDebug(terminalId);
                     }
-                } else {
-                    if (isUnixLike) {
-                        inferiorTTY = await this.resolveTerminalTTYForDebug(terminalId);
-                    }
-
+                } else if (isUnixLike) {
+                    // macOS: 优先 TTY 模式（后续通过 tcsetpgrp 接管终端前台）
+                    inferiorTTY = await this.resolveTerminalTTYForDebug(terminalId);
                     if (!inferiorTTY) {
                         useInputBridge = this.bindDebugTerminalBridge(terminalId);
                     }
+                } else {
+                    // Windows: 内置终端调试通过输入桥接模式将用户输入转发到 GDB
+                    useInputBridge = this.bindDebugTerminalBridge(terminalId);
                 }
 
                 if (!inferiorTTY && !useInputBridge) {
@@ -2689,6 +2737,7 @@ class OICPPApp {
             this.startDebugSession(currentFile, {
                 runMode: debugRunMode,
                 useInputBridge,
+                terminalId: terminalId || '',
                 ...(inferiorTTY ? { inferiorTTY } : {})
             });
             
@@ -2713,27 +2762,12 @@ class OICPPApp {
         }
     }
 
-    showGDBInstallGuide(status = null) {
-        const dbg = String(status?.debugger || '').toLowerCase();
-        const isMacLldbMi = dbg === 'lldb-mi' || dbg === 'lldb';
-        const title = isMacLldbMi ? 'LLDB-MI 调试环境未就绪' : 'GDB 调试器未安装';
-        const intro = isMacLldbMi
-            ? 'macOS 调试功能需要 clang + lldb-mi。请先安装 lldb-mi，并在“编译器设置”中手动选择 lldb-mi 路径。'
-            : '调试功能需要 GDB 调试器支持。请安装 GDB：';
+    showDebugStatus(message) {
         const container = document.getElementById('debug-variables');
         if (container) {
             container.innerHTML = `
-                <div class="debug-error-message" style="padding: 16px; color: #f44747;">
-                    <h3>${title}</h3>
-                    <p>${intro}</p>
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li><strong>Windows:</strong> 安装MinGW-w64或TDM-GCC</li>
-                        <li><strong>Linux:</strong> sudo apt install gdb（Ubuntu/Debian）</li>
-                        <li><strong>macOS:</strong> 安装 lldb-mi，并在编译器设置中手动选择 lldb-mi 路径</li>
-                    </ul>
-                    <p style="margin-top: 16px; font-size: 12px; color: #cccccc;">
-                        安装完成后重启IDE即可使用调试功能。
-                    </p>
+                <div class="debug-status-message" style="padding: 12px 16px; color: #cccccc; font-size: 13px;">
+                    <p>${message}</p>
                 </div>
             `;
         }
@@ -2842,6 +2876,7 @@ class OICPPApp {
                     breakpoints: breakpoints,
                     runMode,
                     useInputBridge,
+                    terminalId: options?.terminalId || '',
                     ...(inferiorTTY ? { inferiorTTY } : {})
                 });
                 
@@ -2924,6 +2959,7 @@ class OICPPApp {
         logInfo('[前端] 调试已停止(原始事件):', data);
         const reason = String(data?.reason || '').toLowerCase();
         const isExit = reason.includes('program-exited') || reason === 'exited' || reason.includes('exit');
+        const isManualStop = data?.success === true || reason === 'stopped' || reason === 'manual-stop';
 
         if (isExit) {
             this.isDebugging = false;
@@ -2932,6 +2968,18 @@ class OICPPApp {
             this.updateDebugControlsState(false);
             this.updateDebugStatus(`程序运行完成，退出码: ${data.exitCode ?? data.code ?? 0}`);
             this.showDebugInfo(`程序运行完成，退出码: ${data.exitCode ?? data.code ?? 0}\n\n程序输出应该在终端窗口中显示。`);
+            this.showWaitingMessages();
+            try { window.monacoEditorManager?.clearAllExecHighlights?.(); } catch (_) {}
+            return;
+        }
+
+        if (isManualStop) {
+            this.isDebugging = false;
+            this._debugExited = true;
+            this.unbindDebugTerminalBridge();
+            this.updateDebugControlsState(false);
+            this.updateDebugStatus('调试已停止');
+            this.showDebugInfo('调试已停止。');
             this.showWaitingMessages();
             try { window.monacoEditorManager?.clearAllExecHighlights?.(); } catch (_) {}
             return;
@@ -3330,7 +3378,7 @@ ${data.message || '程序已加载，等待开始执行'}
                     <p><strong>调试功能错误</strong></p>
                     <p>${message}</p>
                     <p style="margin-top: 8px; font-size: 11px; color: #cccccc;">
-                        请检查调试器（Windows/Linux: GDB，macOS: lldb-mi 且已在编译器设置中手动选择路径）是否可用，代码是否已编译（使用-g选项）
+                        请检查调试器（Windows/Linux: GDB）是否可用，代码是否已编译（使用-g选项）。macOS 暂不支持调试功能。
                     </p>
                 </div>
             `;
@@ -3746,7 +3794,7 @@ ${data.message || '程序已加载，等待开始执行'}
 
 
     async showAbout() {
-        const fallbackBuildInfo = { version: '1.4.1 (v35)', buildTime: '未知', author: 'mywwzh' };
+        const fallbackBuildInfo = { version: '1.4.3 (v37)', buildTime: '未知', author: 'mywwzh' };
         let buildInfo = { ...fallbackBuildInfo };
         try {
             const buildInfoData = window.electronAPI ? await window.electronAPI.getBuildInfo() : null;
@@ -3805,6 +3853,98 @@ ${data.message || '程序已加载，等待开始执行'}
         this.setFeedbackDialogIcon();
         this.setupAboutDialogListeners(dialog);
         
+    }
+
+    showOpenSourceLicenses() {
+        const openSourceLibs = [
+            { name: 'Electron', license: 'MIT', url: 'https://github.com/electron/electron' },
+            { name: 'Monaco Editor', license: 'MIT', url: 'https://github.com/microsoft/monaco-editor' },
+            { name: 'clangd', license: 'Apache-2.0', url: 'https://github.com/llvm/llvm-project' },
+            { name: 'xterm.js', license: 'MIT', url: 'https://github.com/xtermjs/xterm.js' },
+            { name: 'xterm-addon-fit', license: 'MIT', url: 'https://github.com/xtermjs/xterm.js' },
+            { name: 'node-pty', license: 'MIT', url: 'https://github.com/nicely-bot/node-pty' },
+            { name: 'markdown-it', license: 'MIT', url: 'https://github.com/markdown-it/markdown-it' },
+            { name: 'markdown-it-katex', license: 'MIT', url: 'https://github.com/iktakahiro/markdown-it-katex' },
+            { name: 'markdown-it-task-lists', license: 'ISC', url: 'https://github.com/revin/markdown-it-task-lists' },
+            { name: 'markdown-it-image-figures', license: 'MIT', url: 'https://github.com/Antonio-Laguna/markdown-it-image-figures' },
+            { name: 'highlight.js', license: 'BSD-3-Clause', url: 'https://github.com/highlightjs/highlight.js' },
+            { name: 'KaTeX', license: 'MIT', url: 'https://github.com/KaTeX/KaTeX' },
+            { name: 'PDF.js (pdfjs-dist)', license: 'Apache-2.0', url: 'https://github.com/mozilla/pdf.js' },
+            { name: 'axios', license: 'MIT', url: 'https://github.com/axios/axios' },
+            { name: 'sharp', license: 'Apache-2.0', url: 'https://github.com/lovell/sharp' },
+            { name: 'webpack', license: 'MIT', url: 'https://github.com/webpack/webpack' },
+            { name: 'webpack-cli', license: 'MIT', url: 'https://github.com/webpack/webpack-cli' },
+            { name: 'electron-builder', license: 'MIT', url: 'https://github.com/electron-userland/electron-builder' },
+            { name: 'html-webpack-plugin', license: 'MIT', url: 'https://github.com/jantimon/html-webpack-plugin' },
+            { name: 'iconv-lite', license: 'MIT', url: 'https://github.com/ashtuchkin/iconv-lite' },
+            { name: 'turndown', license: 'MIT', url: 'https://github.com/mixmark-io/turndown' },
+            { name: 'extract-zip', license: 'BSD-2-Clause', url: 'https://github.com/maxogden/extract-zip' },
+            { name: 'node-stream-zip', license: 'MIT', url: 'https://github.com/antelle/node-stream-zip' },
+            { name: '7zip-bin', license: 'MIT', url: 'https://github.com/develar/7zip-bin' },
+            { name: 'winreg', license: 'BSD-2-Clause', url: 'https://github.com/fresc81/node-winreg' },
+            { name: 'monaco-editor-webpack-plugin', license: 'MIT', url: 'https://github.com/microsoft/monaco-editor' },
+            { name: 'icojs', license: 'MIT', url: 'https://github.com/nicely-bot/icojs' }
+        ];
+
+        const libRows = openSourceLibs.map(lib => `
+            <tr>
+                <td class="oss-lib-name">${lib.name}</td>
+                <td class="oss-lib-license">${lib.license}</td>
+                <td class="oss-lib-url">${lib.url}</td>
+            </tr>
+        `).join('');
+
+        const dialog = document.createElement('div');
+        dialog.className = 'about-dialog-overlay';
+        dialog.innerHTML = `
+            <div class="about-dialog oss-dialog">
+                <div class="about-header">
+                    <h2>开源软件使用声明</h2>
+                </div>
+                <div class="about-content oss-content">
+                    <p class="oss-intro">OICPP IDE 使用了以下开源软件，在此向这些项目的开发者和贡献者表示感谢。</p>
+                    <div class="oss-table-wrap">
+                        <table class="oss-table">
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>许可证</th>
+                                    <th>项目地址</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${libRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="about-footer">
+                    <button id="oss-close-btn">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+
+        const closeBtn = dialog.querySelector('#oss-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                dialog.remove();
+            });
+        }
+
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                dialog.remove();
+            }
+        });
+
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                dialog.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
     }
 
     async setAboutDialogIcon() {
@@ -3921,12 +4061,14 @@ ${data.message || '程序已加载，等待开始执行'}
                 const font = dialog.querySelector('#editor-font')?.value || 'Consolas';
                 const theme = dialog.querySelector('#editor-theme')?.value || 'dark';
                 const fontSize = parseInt(dialog.querySelector('#editor-font-size')?.value || '14');
+                const terminalFontSize = parseInt(dialog.querySelector('#editor-terminal-font-size')?.value || '14');
                 
                 logInfo('保存编辑器设置 - 读取到的值:', {
                     font,
                     theme,
                     fontSize,
-                    fontSizeInputValue: dialog.querySelector('#editor-font-size')?.value
+                    fontSizeInputValue: dialog.querySelector('#editor-font-size')?.value,
+                    terminalFontSize
                 });
                 
                 const themeChanged = theme !== this.settings.theme;
@@ -3935,6 +4077,7 @@ ${data.message || '程序已加载，等待开始执行'}
                 newSettings.font = font;
                 newSettings.theme = theme;
                 newSettings.fontSize = fontSize;
+                newSettings.terminalFontSize = terminalFontSize;
                 
                 if (themeChanged) {
                     logInfo('检测到主题变化，将在保存后重启编辑器');
@@ -4117,6 +4260,87 @@ ${data.message || '程序已加载，等待开始执行'}
                 if (encoding) encoding.textContent = 'UTF-8';
                 if (language) language.textContent = 'C++';
             }
+
+            // 更新 LSP 状态
+            this.updateLspStatusBar();
+
+            // 更新错误/警告计数
+            this.updateMarkerStatusBar();
+        }
+    }
+
+    updateLspStatusBar() {
+        const lspItem = document.getElementById('lsp-status-item');
+        if (!lspItem) return;
+
+        const icon = lspItem.querySelector('.lsp-status-icon');
+        if (!icon) return;
+
+        try {
+            const status = this.editorManager?.getLspStatus?.() || 'idle';
+            switch (status) {
+                case 'ready':
+                    icon.textContent = '✓';
+                    icon.style.color = '#4ec9b0';
+                    lspItem.title = 'clangd 语言服务器已就绪';
+                    break;
+                case 'starting':
+                    icon.textContent = '⟳';
+                    icon.style.color = '#dcdcaa';
+                    lspItem.title = 'clangd 语言服务器正在启动...';
+                    break;
+                case 'unavailable':
+                    icon.textContent = '✗';
+                    icon.style.color = '#f44747';
+                    lspItem.title = 'clangd 语言服务器不可用';
+                    break;
+                default:
+                    icon.textContent = '◌';
+                    icon.style.color = '#808080';
+                    lspItem.title = 'clangd 语言服务器空闲';
+                    break;
+            }
+        } catch (_) {
+            icon.textContent = '◌';
+        }
+    }
+
+    updateMarkerStatusBar() {
+        const summaryItem = document.getElementById('marker-summary-item');
+        const errorsEl = document.getElementById('marker-errors-count');
+        const warningsEl = document.getElementById('marker-warnings-count');
+
+        if (!summaryItem || !errorsEl || !warningsEl) return;
+
+        try {
+            const counts = this.editorManager?.getCurrentMarkerCounts?.() || { errors: 0, warnings: 0, infos: 0 };
+            
+            if (counts.errors === 0 && counts.warnings === 0) {
+                summaryItem.style.display = 'none';
+                return;
+            }
+
+            summaryItem.style.display = '';
+            
+            if (counts.errors > 0) {
+                errorsEl.textContent = `✗ ${counts.errors}`;
+                errorsEl.style.color = '#f44747';
+                errorsEl.style.display = '';
+            } else {
+                errorsEl.style.display = 'none';
+            }
+
+            if (counts.warnings > 0) {
+                warningsEl.textContent = `⚠ ${counts.warnings}`;
+                warningsEl.style.color = '#dcdcaa';
+                warningsEl.style.display = '';
+            } else {
+                warningsEl.style.display = 'none';
+            }
+
+            summaryItem.title = `${counts.errors} 个错误, ${counts.warnings} 个警告`;
+        } catch (_) {
+            summaryItem.style.display = 'none';
         }
     }
 
@@ -4133,6 +4357,54 @@ ${data.message || '程序已加载，等待开始执行'}
                 const fileName = typeof filePath === 'string' ? filePath.split(/[\\/]/).pop() : '';
                 if (fileName) window.tabManager.markTabAsSaved(fileName);
             }
+        }
+    }
+
+    startLspIfNeeded() {
+        if (!this.editorManager) return;
+        try {
+            // 仅在 LSP 客户端可用时启动
+            if (this.editorManager.lspClient || window.lspClient) {
+                this.editorManager.ensureLspReady().then(() => {
+                    logInfo('[LSP] 应用初始化后 LSP 已就绪');
+                    this.updateLspStatusBar();
+                }).catch(err => {
+                    logWarn('[LSP] 应用初始化后 LSP 启动失败（将在打开文件时重试）:', err?.message || err);
+                    this.updateLspStatusBar();
+                });
+                // 定时更新 LSP 状态（状态可能在异步中变化）
+                setTimeout(() => this.updateLspStatusBar(), 3000);
+                setTimeout(() => this.updateLspStatusBar(), 8000);
+            }
+        } catch (err) {
+            logWarn('[LSP] startLspIfNeeded 出错:', err?.message || err);
+        }
+    }
+
+    _setupMarkerChangeListener() {
+        try {
+            if (typeof monaco === 'undefined' || !monaco.editor) return;
+
+            // 监听 Monaco 标记变化
+            if (monaco.editor.onDidChangeMarkers) {
+                monaco.editor.onDidChangeMarkers(() => {
+                    this.updateMarkerStatusBar();
+                });
+            }
+
+            // 监听编辑器切换
+            const origUpdateStatusBar = this.updateStatusBar.bind(this);
+            this._origUpdateStatusBar = origUpdateStatusBar;
+
+            // 定期更新状态栏（作为备用）
+            setInterval(() => {
+                if (this.initialized) {
+                    this.updateMarkerStatusBar();
+                    this.updateLspStatusBar();
+                }
+            }, 3000);
+        } catch (err) {
+            logWarn('设置标记变化监听失败:', err?.message || err);
         }
     }
 

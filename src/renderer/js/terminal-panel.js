@@ -201,7 +201,10 @@ class IntegratedTerminalPanel {
         const fontFamily = (typeof settings.font === 'string' && settings.font.trim())
             ? settings.font.trim()
             : 'Consolas';
-        const fontSize = this.fixedTerminalFontSize;
+        const configuredFontSize = Number(settings.terminalFontSize);
+        const fontSize = Number.isFinite(configuredFontSize) && configuredFontSize > 0
+            ? Math.round(configuredFontSize)
+            : this.fixedTerminalFontSize;
         return { fontFamily, fontSize };
     }
 
@@ -456,12 +459,41 @@ class IntegratedTerminalPanel {
             const meta = !!event.metaKey;
             const alt = !!event.altKey;
             const shift = !!event.shiftKey;
+            const ctrlOrMeta = ctrl || meta;
+            const shiftOnly = shift && !ctrl && !meta && !alt;
+
+            // ---- 终端复制/粘贴快捷键（比 xterm attachCustomKeyEventHandler 更早拦截） ----
+            const session = sessionRef;
+            const term = session?.terminal;
+            const hasSelection = term && typeof term.getSelection === 'function' && !!term.getSelection();
+            const wantsCopy = (ctrlOrMeta && key === 'c' && (shift || hasSelection))
+                || (ctrlOrMeta && key === 'insert');
+            const wantsPaste = (ctrlOrMeta && key === 'v')
+                || (shiftOnly && key === 'insert');
+
+            if (wantsCopy) {
+                event.preventDefault();
+                event.stopPropagation();
+                const sel = term && typeof term.getSelection === 'function' ? term.getSelection() : '';
+                this.copyTextToClipboard(sel);
+                return;
+            }
+
+            if (wantsPaste) {
+                event.preventDefault();
+                event.stopPropagation();
+                const remoteId = session?.remoteId;
+                if (remoteId) {
+                    this.pasteClipboardToTerminal(remoteId);
+                }
+                return;
+            }
 
             // Ensure terminal input is not stolen by focus traversal or global handlers.
             if (key === 'tab' && !ctrl && !meta && !alt) {
                 event.preventDefault();
                 event.stopPropagation();
-                const seq = shift ? '\u001b[Z' : '\t';
+                const seq = shift ? '\u001b[Z]' : '\t';
                 sendInput(seq);
                 return;
             }
@@ -592,21 +624,33 @@ class IntegratedTerminalPanel {
     }
 
     async pasteClipboardToTerminal(terminalId) {
+        let text = '';
         try {
-            const text = await navigator.clipboard.readText();
-            if (!text) {
-                return;
-            }
-            await window.electronAPI.writeTerminal(terminalId, text);
-            return;
+            text = await navigator.clipboard.readText();
         } catch (_) { }
 
+        if (!text) {
+            try {
+                const result = await window.electronAPI?.clipboardReadText?.();
+                text = result?.success ? String(result.text || '') : '';
+            } catch (_) { }
+        }
+
+        if (!text) {
+            return;
+        }
+
+        // 调试输入桥接模式：通过 inputBridge 发送，确保粘贴内容到达被调试程序
+        const session = this.sessions.get(terminalId);
+        if (session && typeof session.inputBridge === 'function') {
+            this.echoBridgedInput(session, text);
+            try {
+                session.inputBridge(text);
+            } catch (_) { }
+            return;
+        }
+
         try {
-            const result = await window.electronAPI?.clipboardReadText?.();
-            const text = result?.success ? String(result.text || '') : '';
-            if (!text) {
-                return;
-            }
             await window.electronAPI.writeTerminal(terminalId, text);
         } catch (_) { }
     }
