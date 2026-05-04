@@ -638,3 +638,7 @@ contextBridge.exposeInMainWorld('logWarn', (...args) => safeSendLog('warn', args
 contextBridge.exposeInMainWorld('logError', (...args) => safeSendLog('error', args));
 contextBridge.exposeInMainWorld('logwarn', (...args) => safeSendLog('warn', args));
 contextBridge.exposeInMainWorld('logerror', (...args) => safeSendLog('error', args));
+
+// 洛谷请求 IPC
+contextBridge.exposeInMainWorld('luoguRequest', (options) => ipcRenderer.invoke('luogu-request', options));
+contextBridge.exposeInMainWorld('luoguCaptcha', () => ipcRenderer.invoke('luogu-captcha'));

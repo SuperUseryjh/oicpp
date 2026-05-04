@@ -6,7 +6,8 @@ class SidebarManager {
             samples: new SampleTester(),
             compare: new CodeComparer(),
             debug: new DebugPanel(),
-            cloud: new CloudSyncPanel()
+            cloud: new CloudSyncPanel(),
+            luogu: new LuoguManager()
         };
 
         this._pendingResizeRaf = null;

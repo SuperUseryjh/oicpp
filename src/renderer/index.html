@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: http: https:; worker-src 'self' blob: file:; connect-src 'self' https://oicpp.mywwzh.top;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: http: https:; worker-src 'self' blob: file:; connect-src 'self' https://oicpp.mywwzh.top https://www.luogu.com.cn;">
     <meta http-equiv="Permissions-Policy" content="fullscreen=(self)">
     <title>OICPP IDE</title>
     <link rel="stylesheet" href="css/titlebar.css">
@@ -210,6 +210,11 @@
                     </svg>
                 </div>
                 <div class="sidebar-icons-spacer"></div>
+                <div class="sidebar-icon luogu-icon" data-panel="luogu" title="洛谷">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                    </svg>
+                </div>
                 <div class="sidebar-icon cloud-sync-icon" data-panel="cloud" title="云空间" style="display: none;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 18H6a4 4 0 0 1-.88-7.9A6 6 0 0 1 17.5 9c.16 0 .32 0 .48.02A4.5 4.5 0 0 1 19 18zm-7-4v-3H9l3-3 3 3h-3v3h-2zm-2 2h4v2h-4v-2z"/>
@@ -502,6 +507,81 @@
                     </div>
                 </div>
 
+                <div class="panel-content" id="luogu-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">洛谷</span>
+                    </div>
+                    <div class="luogu-content">
+                        <div class="luogu-login-section" id="luogu-login-section">
+                            <div class="luogu-form-group">
+                                <label class="luogu-label">用户名</label>
+                                <input type="text" class="luogu-input" id="luogu-username" placeholder="请输入用户名">
+                            </div>
+                            <div class="luogu-form-group">
+                                <label class="luogu-label">密码</label>
+                                <input type="password" class="luogu-input" id="luogu-password" placeholder="请输入密码">
+                            </div>
+                            <div class="luogu-form-group">
+                                <label class="luogu-label">验证码</label>
+                                <div class="luogu-captcha-container">
+                                    <input type="text" class="luogu-input luogu-captcha-input" id="luogu-captcha" placeholder="请输入验证码">
+                                    <img id="luogu-captcha-img" class="luogu-captcha-img" src="" alt="验证码">
+                                    <button class="luogu-refresh-captcha" id="luogu-refresh-captcha" title="刷新验证码">
+                                        <svg width="16" height="16" viewBox="0 0 16 16">
+                                            <path d="M13.65 2.35a8 8 0 0 0-11.3 0 8 8 0 0 0 0 11.3 8 8 0 0 0 11.3 0 8 8 0 0 0 0-11.3zm-1.41 9.9a6 6 0 0 1-8.48 0 6 6 0 0 1 0-8.48 6 6 0 0 1 8.48 0 6 6 0 0 1 0 8.48z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="luogu-btn luogu-primary" id="luogu-login-btn">登录</button>
+                            <div class="luogu-login-status" id="luogu-login-status"></div>
+                        </div>
+
+                        <div class="luogu-submit-section" id="luogu-submit-section" style="display: none;">
+                            <div class="luogu-user-info" id="luogu-user-info">
+                                <span class="luogu-username" id="luogu-display-username"></span>
+                                <button class="luogu-btn luogu-small" id="luogu-logout-btn">退出登录</button>
+                            </div>
+                            
+                            <div class="luogu-form-group">
+                                <label class="luogu-label">题目编号</label>
+                                <input type="text" class="luogu-input" id="luogu-problem-id" placeholder="如 P1001">
+                            </div>
+                            
+                            <div class="luogu-form-group">
+                                <label class="luogu-label">代码来源</label>
+                                <div class="luogu-code-source-buttons">
+                                    <button class="luogu-btn luogu-small" id="luogu-use-current-file">当前文件</button>
+                                    <button class="luogu-btn luogu-small" id="luogu-select-file">选择文件</button>
+                                </div>
+                                <div class="luogu-selected-file" id="luogu-selected-file">未选择文件</div>
+                            </div>
+                            
+                            <div class="luogu-form-group">
+                                <label class="luogu-label">编程语言</label>
+                                <select class="luogu-select" id="luogu-language">
+                                    <option value="1">C++</option>
+                                    <option value="2">C</option>
+                                    <option value="3">Pascal</option>
+                                    <option value="4">Java</option>
+                                    <option value="5">Python 3</option>
+                                    <option value="6">JavaScript</option>
+                                </select>
+                            </div>
+                            
+                            <button class="luogu-btn luogu-primary" id="luogu-submit-btn">提交代码</button>
+                            <div class="luogu-submit-status" id="luogu-submit-status"></div>
+                            
+                            <div class="luogu-history-section" id="luogu-history-section">
+                                <h3 class="luogu-history-title">提交记录</h3>
+                                <div class="luogu-history-list" id="luogu-history-list">
+                                    <div class="luogu-no-history">暂无提交记录</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="panel-content" id="cloud-panel" style="display: none;">
                     <div class="panel-header">
                         <span class="panel-title">云空间</span>
@@ -682,6 +762,7 @@
     <script src="js/sidebar/debugPanel.js"></script>
     <script src="js/sidebar/codeComparer.js"></script>
     <script src="js/sidebar/cloudSync.js"></script>
+    <script src="js/sidebar/luoguManager.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/tabs.js"></script>
     <script src="js/terminal-panel.js"></script>

@@ -1,59 +1,54 @@
+// 基于 vscode-luogu 实现的洛谷管理器
+// 参考：vscode-luogu/src/utils/api.ts
+
+const CSRF_TOKEN_REGEX = /<meta name="csrf-token" content="(.*)">/;
+
 class LuoguManager {
     constructor() {
         this.isLoggedIn = false;
         this.currentUser = null;
         this.csrfToken = null;
-        this.selectedFile = null;
         this.selectedFileContent = null;
+
         this.init();
     }
 
-    init() {
+    async init() {
         this.bindEvents();
-        this.loadSavedLoginState();
-    }
-
-    activate() {
-        // 面板激活时的回调（可选）
+        await this.loadSavedLoginState();
+        this.refreshCaptcha();
+        console.log('LuoguManager 初始化完成');
     }
 
     bindEvents() {
         document.getElementById('luogu-login-btn')?.addEventListener('click', () => this.handleLogin());
         document.getElementById('luogu-logout-btn')?.addEventListener('click', () => this.handleLogout());
-        document.getElementById('luogu-captcha-refresh')?.addEventListener('click', () => this.refreshCaptcha());
+        document.getElementById('luogu-refresh-captcha')?.addEventListener('click', () => this.refreshCaptcha());
         document.getElementById('luogu-captcha-img')?.addEventListener('click', () => this.refreshCaptcha());
         document.getElementById('luogu-submit-btn')?.addEventListener('click', () => this.handleSubmit());
-        document.getElementById('luogu-use-editor-code')?.addEventListener('click', () => this.useEditorCode());
+        document.getElementById('luogu-use-current-file')?.addEventListener('click', () => this.useEditorCode());
         document.getElementById('luogu-select-file')?.addEventListener('click', () => this.selectFile());
-        document.getElementById('luogu-remove-file')?.addEventListener('click', () => this.removeSelectedFile());
-        document.getElementById('luogu-refresh-history')?.addEventListener('click', () => this.refreshHistory());
     }
 
-    loadSavedLoginState() {
-        try {
-            const saved = localStorage.getItem('luogu_login_state');
-            if (saved) {
-                const state = JSON.parse(saved);
-                if (state.isLoggedIn && state.user) {
-                    this.isLoggedIn = true;
-                    this.currentUser = state.user;
-                    this.csrfToken = state.csrfToken;
-                    this.updateUI();
-                    return;
-                }
+    async loadSavedLoginState() {
+        const saved = localStorage.getItem('luogu_login_state');
+        if (saved) {
+            const state = JSON.parse(saved);
+            if (state.isLoggedIn && state.user) {
+                this.isLoggedIn = true;
+                this.currentUser = state.user;
+                this.updateUI();
+                await this.fetchCsrfToken();
+                return;
             }
-        } catch (e) {
-            console.warn('加载登录状态失败:', e);
         }
-        this.refreshCaptcha();
+        await this.refreshCaptcha();
     }
 
     saveLoginState() {
         localStorage.setItem('luogu_login_state', JSON.stringify({
             isLoggedIn: this.isLoggedIn,
-            user: this.currentUser,
-            csrfToken: this.csrfToken,
-            savedAt: Date.now()
+            user: this.currentUser
         }));
     }
 
@@ -61,15 +56,108 @@ class LuoguManager {
         localStorage.removeItem('luogu_login_state');
     }
 
+    // ========== 网络请求辅助 ==========
+
+    async fetchJson(url, options = {}) {
+        const result = await window.luoguRequest({
+            url: url,
+            method: options.method || 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(options.headers || {})
+            },
+            ...options
+        });
+
+        if (result.status >= 400) {
+            const error = new Error(`HTTP ${result.status}`);
+            error.status = result.status;
+            throw error;
+        }
+
+        return result.data;
+    }
+
+    async fetchText(url, options = {}) {
+        const result = await window.luoguRequest({
+            url: url,
+            method: options.method || 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(options.headers || {})
+            },
+            ...options
+        });
+
+        if (result.status >= 400) {
+            throw new Error(`HTTP ${result.status}`);
+        }
+
+        return result.data;
+    }
+
+    async postJson(url, data, options = {}) {
+        const result = await window.luoguRequest({
+            url: url,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': this.csrfToken,
+                ...(options.headers || {})
+            },
+            data: data,
+            ...options
+        });
+
+        if (result.status >= 400) {
+            const errorData = result.data || {};
+            const error = new Error(errorData.errorMessage || `HTTP ${result.status}`);
+            error.status = result.status;
+            error.data = errorData;
+            throw error;
+        }
+
+        return result.data;
+    }
+
+    parseCookie(cookieHeader) {
+        if (!cookieHeader) return {};
+        const cookies = {};
+        const arr = Array.isArray(cookieHeader) ? cookieHeader : [cookieHeader];
+        arr.forEach(c => {
+            const parts = c.split(';')[0].split('=');
+            if (parts.length === 2) {
+                cookies[parts[0].trim()] = parts[1].trim();
+            }
+        });
+        return cookies;
+    }
+
+    // ========== 验证码 ==========
+
     async refreshCaptcha() {
         try {
             const img = document.getElementById('luogu-captcha-img');
             if (!img) return;
-            img.src = `https://www.luogu.com.cn/lg4/captcha?t=${Date.now()}`;
+            
+            const result = await window.luoguCaptcha();
+            if (result.success) {
+                img.src = result.image;
+            } else {
+                console.warn('获取验证码失败:', result.error);
+                img.src = `https://www.luogu.com.cn/lg4/captcha?t=${Date.now()}`;
+            }
         } catch (e) {
             console.warn('刷新验证码失败:', e);
+            const img = document.getElementById('luogu-captcha-img');
+            if (img) {
+                img.src = `https://www.luogu.com.cn/lg4/captcha?t=${Date.now()}`;
+            }
         }
     }
+
+    // ========== 登录 ==========
 
     async handleLogin() {
         const username = document.getElementById('luogu-username')?.value?.trim();
@@ -88,101 +176,94 @@ class LuoguManager {
         try {
             this.showStatus('luogu-login-status', '正在登录...', 'info');
 
-            const res = await fetch('https://www.luogu.com.cn/do-auth/password', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Referer': 'https://www.luogu.com.cn/'
-                },
-                body: JSON.stringify({ username, password, captcha })
+            const finalUsername = username.match(/^1[0-9]{10}$/) ? '+86' + username : username;
+
+            console.log('发送登录请求:', {
+                username: finalUsername,
+                password: '***',
+                captcha: captcha
             });
 
-            const result = await res.json();
-            console.log('登录响应:', result);
+            const result = await this.postJson('https://www.luogu.com.cn/do-auth/password', {
+                username: finalUsername,
+                password: password,
+                captcha: captcha
+            });
 
-            if (res.ok && result.username) {
+            console.log('登录响应:', result);
+            console.log('响应 headers:', result.headers);
+
+            if (result.username) {
                 this.isLoggedIn = true;
                 this.currentUser = {
                     username: result.username,
                     uid: result.uid || 0
                 };
-                
+
                 this.saveLoginState();
                 this.updateUI();
                 this.showStatus('luogu-login-status', '登录成功！', 'success');
-                
+
                 document.getElementById('luogu-username').value = '';
                 document.getElementById('luogu-password').value = '';
                 document.getElementById('luogu-captcha').value = '';
-                
-                setTimeout(() => this.fetchUserInfo(), 500);
+
+                await this.fetchCsrfToken();
                 setTimeout(() => this.refreshCaptcha(), 1000);
             } else {
-                this.showStatus('luogu-login-status', result.msg || result.message || '登录失败', 'error');
-                this.refreshCaptcha();
+                this.showStatus('luogu-login-status', result.msg || '登录失败', 'error');
+                await this.refreshCaptcha();
             }
         } catch (e) {
             console.error('登录失败:', e);
             this.showStatus('luogu-login-status', '登录失败：' + e.message, 'error');
-            this.refreshCaptcha();
+            await this.refreshCaptcha();
         }
     }
 
     async handleLogout() {
         try {
-            await fetch('https://www.luogu.com.cn/auth/logout', {
-                method: 'POST',
-                credentials: 'include'
-            });
+            await this.postJson('https://www.luogu.com.cn/auth/logout', {});
         } catch (e) {}
-        
+
         this.isLoggedIn = false;
         this.currentUser = null;
         this.csrfToken = null;
         this.clearLoginState();
         this.updateUI();
         this.showStatus('luogu-login-status', '已退出登录', 'success');
-        this.refreshCaptcha();
+        await this.refreshCaptcha();
     }
 
-    async fetchUserInfo() {
-        if (!this.currentUser?.username) return;
-        
+    // ========== CSRF Token ==========
+
+    async fetchCsrfToken() {
         try {
-            // 先访问首页获取 CSRF Token
-            const homeRes = await fetch('https://www.luogu.com.cn/', {
-                credentials: 'include'
-            });
-            const homeHtml = await homeRes.text();
-            
-            const csrfMatch = homeHtml.match(/<meta\s+name="csrf-token"\s+content="([^"]+)"/i);
-            if (csrfMatch) {
-                this.csrfToken = csrfMatch[1];
+            const html = await this.fetchText('https://www.luogu.com.cn/ranking');
+            const match = html.match(CSRF_TOKEN_REGEX);
+            if (match) {
+                this.csrfToken = match[1];
                 console.log('获取到 CSRF Token');
-                this.saveLoginState();
             }
-
-            // 尝试从登录响应中获取 UID（如果有的话）
-            // 如果没有 UID，后续使用用户名获取记录
-            if (!this.currentUser.uid && this.currentUser.username) {
-                // 尝试从首页 HTML 中提取当前用户 UID
-                const uidMatch = homeHtml.match(/"uid":\s*(\d+)/i);
-                if (uidMatch) {
-                    this.currentUser.uid = parseInt(uidMatch[1]);
-                    console.log('获取到 UID:', this.currentUser.uid);
-                }
-            }
-
-            this.saveLoginState();
-            this.updateUI();
-            
-            // 刷新历史记录
-            setTimeout(() => this.refreshHistory(), 500);
         } catch (e) {
-            console.warn('获取用户信息失败:', e);
+            console.warn('获取 CSRF Token 失败:', e);
         }
     }
+
+    async fetchCsrfTokenFromProblem(problemId) {
+        try {
+            const html = await this.fetchText(`https://www.luogu.com.cn/problem/${problemId}`);
+            const match = html.match(CSRF_TOKEN_REGEX);
+            if (match) {
+                this.csrfToken = match[1];
+                console.log('从题目页面获取到 CSRF Token');
+            }
+        } catch (e) {
+            console.warn('从题目页面获取 CSRF Token 失败:', e);
+        }
+    }
+
+    // ========== UI 更新 ==========
 
     updateUI() {
         const loginSection = document.getElementById('luogu-login-section');
@@ -190,23 +271,22 @@ class LuoguManager {
         const userInfo = document.getElementById('luogu-user-info');
         const logoutBtn = document.getElementById('luogu-logout-btn');
 
-        if (this.isLoggedIn) {
+        if (this.isLoggedIn && this.currentUser) {
             loginSection.style.display = 'none';
             submitSection.style.display = 'block';
             userInfo.style.display = 'flex';
             logoutBtn.disabled = false;
 
             document.getElementById('luogu-display-username').textContent = this.currentUser.username;
-            document.getElementById('luogu-display-uid').textContent = `UID: ${this.currentUser.uid}`;
-            document.getElementById('luogu-solved-count').textContent = this.currentUser.solvedProblemCount || 0;
-            document.getElementById('luogu-submit-count').textContent = this.currentUser.submittedProblemCount || 0;
         } else {
             loginSection.style.display = 'block';
             submitSection.style.display = 'none';
             userInfo.style.display = 'none';
-            logoutBtn.disabled = true;
+            logoutBtn.disabled = false;
         }
     }
+
+    // ========== 代码选择 ==========
 
     async useEditorCode() {
         const activeTab = window.tabManager?.getActiveTab?.();
@@ -221,9 +301,8 @@ class LuoguManager {
             return;
         }
 
-        this.selectedFile = { name: activeTab.fileName || 'code.cpp', path: 'editor' };
         this.selectedFileContent = content;
-        this.updateSelectedFileUI();
+        document.getElementById('luogu-selected-file').textContent = '已使用当前编辑器代码';
         this.showStatus('luogu-submit-status', '已使用当前编辑器代码', 'success');
     }
 
@@ -239,33 +318,16 @@ class LuoguManager {
             if (!filePath) return;
 
             const content = await window.electronAPI?.readFileContent?.(filePath);
-            this.selectedFile = { name: filePath.split(/[\\/]/).pop(), path: filePath };
             this.selectedFileContent = content;
-            
-            this.updateSelectedFileUI();
-            this.showStatus('luogu-submit-status', `已选择：${this.selectedFile.name}`, 'success');
+            const fileName = filePath.split(/[\\/]/).pop();
+            document.getElementById('luogu-selected-file').textContent = `已选择：${fileName}`;
+            this.showStatus('luogu-submit-status', `已选择：${fileName}`, 'success');
         } catch (e) {
             this.showStatus('luogu-submit-status', '选择文件失败', 'error');
         }
     }
 
-    removeSelectedFile() {
-        this.selectedFile = null;
-        this.selectedFileContent = null;
-        this.updateSelectedFileUI();
-        this.showStatus('luogu-submit-status', '已移除', 'info');
-    }
-
-    updateSelectedFileUI() {
-        const el = document.getElementById('luogu-selected-file');
-        const nameEl = document.getElementById('luogu-file-name');
-        if (this.selectedFile) {
-            el.style.display = 'flex';
-            nameEl.textContent = this.selectedFile.name;
-        } else {
-            el.style.display = 'none';
-        }
-    }
+    // ========== 提交代码 ==========
 
     async handleSubmit() {
         if (!this.isLoggedIn) {
@@ -274,7 +336,7 @@ class LuoguManager {
         }
 
         const problemId = document.getElementById('luogu-problem-id')?.value?.trim();
-        const language = document.getElementById('luogu-language')?.value || 'C++';
+        const language = parseInt(document.getElementById('luogu-language')?.value || '1');
 
         if (!problemId) {
             this.showStatus('luogu-submit-status', '请输入题目编号', 'error');
@@ -288,71 +350,34 @@ class LuoguManager {
         try {
             this.showStatus('luogu-submit-status', '正在提交...', 'info');
 
-            // 关键：必须先访问题目页面获取该题目特定的 CSRF Token
-            const problemUrl = `https://www.luogu.com.cn/problem/${problemId}`;
-            console.log('访问题目页面:', problemUrl);
-            
-            const problemRes = await fetch(problemUrl, {
-                credentials: 'include',
-                headers: {
-                    'Accept': 'text/html,application/xhtml+xml',
-                    'Referer': 'https://www.luogu.com.cn/'
+            // 先访问题目页面获取页面特定的 CSRF Token
+            await this.fetchCsrfTokenFromProblem(problemId);
+
+            const response = await this.postJson(
+                `https://www.luogu.com.cn/fe/api/problem/submit/${problemId}`,
+                {
+                    code: this.selectedFileContent,
+                    lang: language,
+                    enableO2: 0
                 }
-            });
-            
-            if (!problemRes.ok) {
-                console.error('访问题目页面失败:', problemRes.status);
-                throw new Error(`无法访问题目页面 (HTTP ${problemRes.status})，请检查题目编号`);
-            }
-            
-            const problemHtml = await problemRes.text();
-            console.log('题目页面 HTML 长度:', problemHtml.length);
-            
-            const csrfMatch = problemHtml.match(/<meta\s+name="csrf-token"\s+content="([^"]+)"/i);
-            
-            if (!csrfMatch) {
-                console.error('CSRF Token 匹配失败');
-                throw new Error('无法从题目页面获取 CSRF Token');
-            }
-            
-            const pageCsrfToken = csrfMatch[1];
-            console.log('获取到题目页面 CSRF Token:', pageCsrfToken.substring(0, 20) + '...');
+            );
 
-            // 使用 Electron IPC 通过主进程发送请求
-            const submitUrl = `https://www.luogu.com.cn/fe/api/problem/submit/${problemId}`;
-            console.log('提交 URL:', submitUrl);
+            console.log('提交响应:', response);
 
-            try {
-                const result = await window.electronAPI.luoguSubmit(
-                    problemId,
-                    this.selectedFileContent,
-                    this.mapLanguage(language),
-                    pageCsrfToken
-                );
-                
-                console.log('提交响应:', result);
-
-                if (result.code === 200 || result.rid) {
-                    const rid = result.data?.rid || result.rid;
-                    this.showStatus('luogu-submit-status', `提交成功！ID: ${rid}`, 'success');
-                    setTimeout(() => this.refreshHistory(), 2000);
-                } else {
-                    this.showStatus('luogu-submit-status', result.msg || result.message || result.data || '提交失败', 'error');
-                }
-            } catch (e) {
-                console.error('IPC 提交失败:', e);
-                throw e;
+            if (response.rid) {
+                this.showStatus('luogu-submit-status', `提交成功！ID: ${response.rid}`, 'success');
+                setTimeout(() => this.refreshHistory(), 2000);
+            } else {
+                this.showStatus('luogu-submit-status', '提交失败', 'error');
             }
         } catch (e) {
             console.error('提交失败:', e);
-            this.showStatus('luogu-submit-status', '提交失败：' + e.message, 'error');
+            const errorMsg = e.data?.errorMessage || e.message || '提交失败';
+            this.showStatus('luogu-submit-status', errorMsg, 'error');
         }
     }
 
-    mapLanguage(lang) {
-        const map = { 'C++': 1, 'C': 2, 'Python 3': 3, 'Python': 3, 'Java': 4, 'Pascal': 5 };
-        return map[lang] || 1;
-    }
+    // ========== 提交历史 ==========
 
     async refreshHistory() {
         if (!this.isLoggedIn || !this.currentUser?.uid) return;
@@ -361,10 +386,7 @@ class LuoguManager {
         listEl.innerHTML = '<div class="luogu-empty-message">加载中...</div>';
 
         try {
-            const res = await fetch(`https://www.luogu.com.cn/record/list?user=${this.currentUser.uid}&page=1`, {
-                credentials: 'include'
-            });
-            const result = await res.json();
+            const result = await this.fetchJson(`https://www.luogu.com.cn/record/list?user=${this.currentUser.uid}&page=1`);
 
             if (result.code === 200) {
                 const records = result.data?.records || [];
@@ -401,12 +423,16 @@ class LuoguManager {
     }
 
     getStatusClass(result) {
-        const map = { 12: 'ac', 13: 'wa', 14: 'tle', 15: 'mle', 16: 're', 17: 'ce' };
+        const map = {
+            12: 'ac', 13: 'wa', 14: 'tle', 15: 'mle', 16: 're', 17: 'ce'
+        };
         return map[result] || 'pending';
     }
 
     getStatusText(result) {
-        const map = { 12: 'AC', 13: 'WA', 14: 'TLE', 15: 'MLE', 16: 'RE', 17: 'CE' };
+        const map = {
+            12: 'AC', 13: 'WA', 14: 'TLE', 15: 'MLE', 16: 'RE', 17: 'CE'
+        };
         return map[result] || 'Pending';
     }
 
@@ -426,6 +452,12 @@ class LuoguManager {
         el.className = `${elId} show ${type}`;
         if (type !== 'info') {
             setTimeout(() => el.classList.remove('show'), 5000);
+        }
+    }
+
+    activate() {
+        if (this.isLoggedIn) {
+            this.updateUI();
         }
     }
 }

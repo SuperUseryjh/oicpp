@@ -1937,6 +1937,71 @@ function createWindow() {
         }
     });
 
+    // 洛谷请求处理（解决跨域和 Referer 问题）
+    const luoguAxios = require('axios').default.create({
+        baseURL: 'https://www.luogu.com.cn/',
+        withCredentials: true,
+        timeout: 10000,
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        maxRedirects: 0,
+        validateStatus: (status) => status < 400
+    });
+
+    ipcMain.handle('luogu-request', async (_event, options) => {
+        const { url, method = 'GET', data = null, headers = {} } = options;
+        
+        try {
+            const response = await luoguAxios({
+                url: url,
+                method: method,
+                data: data,
+                headers: {
+                    ...headers,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            return {
+                status: response.status,
+                headers: response.headers,
+                data: response.data
+            };
+        } catch (err) {
+            if (err.response) {
+                return {
+                    status: err.response.status,
+                    headers: err.response.headers,
+                    data: err.response.data
+                };
+            }
+            throw err;
+        }
+    });
+
+    // 获取验证码图片（Base64）
+    ipcMain.handle('luogu-captcha', async () => {
+        try {
+            const response = await luoguAxios.get('/lg4/captcha', {
+                responseType: 'arraybuffer',
+                params: { t: Date.now() }
+            });
+            
+            const base64 = Buffer.from(response.data).toString('base64');
+            return {
+                success: true,
+                image: `data:image/png;base64,${base64}`
+            };
+        } catch (err) {
+            console.error('获取验证码失败:', err.message);
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    });
+
     ipcMain.handle('get-update-download-status', () => {
         return getUpdateDownloadState();
     });
